@@ -1,0 +1,91 @@
+# Level Design
+
+## How Levels Work
+
+Levels are defined as 2D character arrays in Swift files (not JSON/plist). Each character maps to a game element. `LevelLoader` parses the array and creates SpriteKit nodes.
+
+## Tile Legend
+
+| Char | Element | Node Type | Physics Category |
+|------|---------|-----------|-----------------|
+| ` ` | Empty/sky | — | — |
+| `#` | Ground (underground style) | BlockNode (.ground) | ground |
+| `G` | Ground (surface style) | BlockNode (.ground) | ground |
+| `B` | Brick block | BlockNode (.brick) | block |
+| `?` | Question block (coin) | BlockNode (.question) | block |
+| `M` | Question block (mushroom) | BlockNode (.question) | block |
+| `F` | Question block (fire flower) | BlockNode (.question) | block |
+| `S` | Question block (star) | BlockNode (.question) | block |
+| `1` | Question block (1-up) | BlockNode (.question) | block |
+| `=` | Platform (one-way) | BlockNode (.platform) | block |
+| `[` | Pipe top-left | PipeNode | block |
+| `P` | Pipe body-left | PipeNode | block |
+| `\|` | Pipe body-right | PipeNode | block |
+| `g` | Goomba | Enemy (.goomba) | enemy |
+| `k` | Koopa | Enemy (.koopa) | enemy |
+| `C` | Floating coin | SKSpriteNode | coin |
+| `W` | Death zone (water/pit) | SKNode | deathZone |
+| `>` | Flagpole (level end) | SKSpriteNode | flagpole |
+| `@` | Player start position | — (position marker) | — |
+
+## Level Data Structure
+
+```swift
+struct LevelData {
+    let tiles: [[Character]]    // 2D grid, row 0 = top of level
+    let playerStart: CGPoint    // Derived from '@' position
+    let flagpolePosition: CGPoint  // Derived from '>' position
+}
+```
+
+## Grid Coordinate System
+
+- **Tile size**: 32×32 points (defined in `GameConstants.tileSize`)
+- **Origin**: Bottom-left of the level (SpriteKit's default)
+- **Row 0 in the array** = top of the level (y is inverted during loading)
+- **Column 0** = left edge of the level
+
+Conversion from grid to world position:
+```swift
+let x = CGFloat(col) * tileSize + tileSize / 2
+let y = CGFloat(totalRows - row - 1) * tileSize + tileSize / 2
+```
+
+## Level Dimensions
+
+Current default: 120 columns × 14 rows (defined in `GameConstants`).
+
+The camera scrolls horizontally but is clamped to level bounds, so the level width determines the playable area.
+
+## Creating a New Level
+
+1. Create a new file (e.g., `Level2.swift`) in `SuperMiego/Levels/`
+2. Define a struct with a static `getData()` method returning `LevelData`:
+
+```swift
+struct Level2 {
+    static func getData() -> LevelData {
+        let tiles: [[Character]] = [
+            // Row 0 (top of level - sky)
+            Array(repeating: " ", count: 120),
+            // ... more rows ...
+            // Row 13 (bottom - ground)
+            Array(repeating: "G", count: 120),
+        ]
+        return LevelLoader.loadLevel(from: tiles)
+    }
+}
+```
+
+3. In `GameScene.swift`, change the level data source from `Level1.getData()` to `Level2.getData()`
+
+## Design Tips
+
+- Ground is typically rows 12–13 (2 tiles thick)
+- Player start (`@`) should be on the row above ground
+- Leave empty rows at the top for sky / jump space
+- Gaps in the ground create pits; place `W` (death zone) below them
+- Pipes are multi-tile: `[` for top, `P` and `|` for body columns
+- Question blocks with power-ups (`M`, `F`, `S`) should be reachable by jumping
+- Place enemies (`g`, `k`) on ground level; they walk left by default and reverse on walls
+- End each level with a flagpole (`>`) placed above ground
