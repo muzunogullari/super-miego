@@ -8,6 +8,12 @@ enum PlayerState {
     case dead
 }
 
+enum JumpType {
+    case none
+    case low
+    case high
+}
+
 protocol PlayerDelegate: AnyObject {
     func playerDidDie(_ player: Player)
     func playerDidShootFireball(_ player: Player, at position: CGPoint, direction: CGFloat)
@@ -29,6 +35,7 @@ class Player: SKSpriteNode {
     private var canJump: Bool = true
     private var coyoteTime: TimeInterval = 0
     private let coyoteTimeDuration: TimeInterval = 0.1
+    private var currentJumpType: JumpType = .none
 
     // MARK: - Movement
     private let moveSpeed: CGFloat = 180
@@ -83,12 +90,12 @@ class Player: SKSpriteNode {
 
     // MARK: - Update
 
-    func update(deltaTime: TimeInterval, moveDirection: CGFloat, isJumpHeld: Bool) {
+    func update(deltaTime: TimeInterval, moveDirection: CGFloat) {
         guard playerState != .dead else { return }
 
         updateGroundState(deltaTime: deltaTime)
         updateMovement(direction: moveDirection)
-        updateJump(isHeld: isJumpHeld, deltaTime: deltaTime)
+        updateJump(deltaTime: deltaTime)
         updateTimers(deltaTime: deltaTime)
         updateFacing(direction: moveDirection)
     }
@@ -131,19 +138,21 @@ class Player: SKSpriteNode {
         }
     }
 
-    private func updateJump(isHeld: Bool, deltaTime: TimeInterval) {
+    private func updateJump(deltaTime: TimeInterval) {
         guard let body = physicsBody else { return }
 
-        // Variable height jump - add force while holding and within time limit
-        if isJumping && isHeld && jumpHoldTime < maxJumpHoldTime && body.velocity.dy > 0 {
+        // Only high jumps get hold bonus for variable height
+        if isJumping && currentJumpType == .high && jumpHoldTime < maxJumpHoldTime && body.velocity.dy > 0 {
             body.velocity.dy += jumpHoldForce * CGFloat(deltaTime) * 60
             jumpHoldTime += deltaTime
         }
+        // Low jumps get no additional force - fixed height
 
         // Reset jump state when landing
         if isOnGround && body.velocity.dy <= 0 {
             isJumping = false
             canJump = true
+            currentJumpType = .none
         }
     }
 
@@ -197,7 +206,7 @@ class Player: SKSpriteNode {
 
     // MARK: - Input Actions
 
-    func startJump() {
+    func startLowJump() {
         guard playerState != .dead else { return }
         guard canJump && (isOnGround || coyoteTime > 0) else { return }
 
@@ -205,16 +214,24 @@ class Player: SKSpriteNode {
         canJump = false
         jumpHoldTime = 0
         coyoteTime = 0
+        currentJumpType = .low
 
-        physicsBody?.velocity.dy = jumpForce
+        // Lower force, no hold bonus will be applied
+        physicsBody?.velocity.dy = GameConstants.lowJumpForce
     }
 
-    func endJump() {
-        // Cutting jump short - reduce upward velocity
-        if isJumping, let body = physicsBody, body.velocity.dy > 100 {
-            body.velocity.dy *= 0.5
-        }
-        isJumping = false
+    func startHighJump() {
+        guard playerState != .dead else { return }
+        guard canJump && (isOnGround || coyoteTime > 0) else { return }
+
+        isJumping = true
+        canJump = false
+        jumpHoldTime = 0
+        coyoteTime = 0
+        currentJumpType = .high
+
+        // Full force + hold bonus will be applied in updateJump
+        physicsBody?.velocity.dy = GameConstants.highJumpForce
     }
 
     func shoot() -> Bool {
@@ -357,6 +374,7 @@ class Player: SKSpriteNode {
         jumpHoldTime = 0
         canJump = true
         coyoteTime = 0
+        currentJumpType = .none
         groundContactCount = 0
         invulnerabilityTimer = 0
         invincibilityTimer = 0

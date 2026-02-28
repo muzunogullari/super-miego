@@ -80,4 +80,14 @@ struct GameConstants {
     static let levelWidth: Int = 120  // tiles
     static let levelHeight: Int = 14  // tiles
     static let groundHeight: Int = 2  // tiles from bottom
+
+    // MARK: - Touch Input
+    static let dragDeadZone: CGFloat = 20.0           // Pixels before drag registers
+    static let tapMaxDuration: TimeInterval = 0.25    // Max time for tap gesture
+    static let doubleTapWindow: TimeInterval = 0.30   // Window between taps for double-tap
+    static let tapMaxMovement: CGFloat = 15.0         // Max movement distance for tap gesture
+
+    // MARK: - Jump Forces (Tap System)
+    static let lowJumpForce: CGFloat = 312            // Single tap - 60% of high jump
+    static let highJumpForce: CGFloat = 520           // Double tap - full jump
 }

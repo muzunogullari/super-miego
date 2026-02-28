@@ -21,12 +21,20 @@ class GameScene: SKScene {
     private var levelData: LevelData!
     private var levelBounds: CGRect = .zero
 
-    // MARK: - Input State
+    // MARK: - Input State (Drag + Tap System)
+    private struct TrackedTouch {
+        let id: Int
+        let startLocation: CGPoint
+        let startTime: TimeInterval
+        var currentLocation: CGPoint
+        var isDrag: Bool
+    }
+
+    private var activeTouches: [Int: TrackedTouch] = [:]
+    private var dragTouchID: Int? = nil
+    private var lastTapTime: TimeInterval = 0
+    private var lastTapLocation: CGPoint = .zero
     private var moveDirection: CGFloat = 0
-    private var isJumpPressed: Bool = false
-    private var jumpPressTime: TimeInterval = 0
-    private var movementTouchID: Int?
-    private var jumpTouchID: Int?
 
     // MARK: - State
     private var lastUpdateTime: TimeInterval = 0
@@ -172,10 +180,7 @@ class GameScene: SKScene {
     }
 
     private func setupControlOverlays() {
-        let overlayAlpha: CGFloat = 0.15
-        let movementWidth = size.width / 3.0
-        let jumpWidth = size.width * 2.0 / 3.0
-        let overlayHeight = size.height * 0.25
+        let overlayAlpha: CGFloat = 0.2
 
         // Container for control overlays (attached to camera)
         let controlsNode = SKNode()
@@ -183,105 +188,30 @@ class GameScene: SKScene {
         controlsNode.zPosition = 90
         cameraNode.addChild(controlsNode)
 
-        // Movement zone (left third of screen)
-        let movementBg = SKSpriteNode(
-            color: SKColor(white: 1.0, alpha: overlayAlpha),
-            size: CGSize(width: movementWidth, height: overlayHeight)
+        // Instruction bar at bottom
+        let instructionBg = SKSpriteNode(
+            color: SKColor(white: 0, alpha: overlayAlpha),
+            size: CGSize(width: size.width * 0.85, height: 50)
         )
-        movementBg.anchorPoint = CGPoint(x: 0, y: 0)
-        movementBg.position = CGPoint(x: -size.width / 2, y: -size.height / 2)
-        controlsNode.addChild(movementBg)
+        instructionBg.position = CGPoint(x: 0, y: -size.height / 2 + 35)
+        controlsNode.addChild(instructionBg)
 
-        // Left arrow
-        let leftArrow = createArrowLabel(text: "◀", size: 28)
-        leftArrow.position = CGPoint(
-            x: -size.width / 2 + movementWidth * 0.25,
-            y: -size.height / 2 + overlayHeight / 2
-        )
-        controlsNode.addChild(leftArrow)
+        // Control instructions
+        let instructionLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+        instructionLabel.text = "DRAG to move  |  TAP to jump  |  DOUBLE-TAP for high jump"
+        instructionLabel.fontSize = 11
+        instructionLabel.fontColor = SKColor(white: 1.0, alpha: 0.85)
+        instructionLabel.position = CGPoint(x: 0, y: -size.height / 2 + 35)
+        instructionLabel.verticalAlignmentMode = .center
+        controlsNode.addChild(instructionLabel)
 
-        // Right arrow
-        let rightArrow = createArrowLabel(text: "▶", size: 28)
-        rightArrow.position = CGPoint(
-            x: -size.width / 2 + movementWidth * 0.75,
-            y: -size.height / 2 + overlayHeight / 2
-        )
-        controlsNode.addChild(rightArrow)
-
-        // Divider line in movement zone
-        let divider = SKSpriteNode(
-            color: SKColor(white: 1.0, alpha: 0.3),
-            size: CGSize(width: 2, height: overlayHeight - 20)
-        )
-        divider.position = CGPoint(
-            x: -size.width / 2 + movementWidth / 2,
-            y: -size.height / 2 + overlayHeight / 2
-        )
-        controlsNode.addChild(divider)
-
-        // Movement label
-        let moveLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        moveLabel.text = "MOVE"
-        moveLabel.fontSize = 10
-        moveLabel.fontColor = SKColor(white: 1.0, alpha: 0.6)
-        moveLabel.position = CGPoint(
-            x: -size.width / 2 + movementWidth / 2,
-            y: -size.height / 2 + 8
-        )
-        controlsNode.addChild(moveLabel)
-
-        // Jump zone (right two-thirds)
-        let jumpBg = SKSpriteNode(
-            color: SKColor(red: 0.3, green: 0.5, blue: 0.8, alpha: overlayAlpha),
-            size: CGSize(width: jumpWidth, height: overlayHeight)
-        )
-        jumpBg.anchorPoint = CGPoint(x: 0, y: 0)
-        jumpBg.position = CGPoint(x: -size.width / 2 + movementWidth, y: -size.height / 2)
-        controlsNode.addChild(jumpBg)
-
-        // Jump arrow
-        let jumpArrow = createArrowLabel(text: "▲", size: 32)
-        jumpArrow.position = CGPoint(
-            x: -size.width / 2 + movementWidth + jumpWidth / 2,
-            y: -size.height / 2 + overlayHeight / 2
-        )
-        controlsNode.addChild(jumpArrow)
-
-        // Jump label
-        let jumpLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        jumpLabel.text = "JUMP (hold for higher)"
-        jumpLabel.fontSize = 10
-        jumpLabel.fontColor = SKColor(white: 1.0, alpha: 0.6)
-        jumpLabel.position = CGPoint(
-            x: -size.width / 2 + movementWidth + jumpWidth / 2,
-            y: -size.height / 2 + 8
-        )
-        controlsNode.addChild(jumpLabel)
-
-        // Vertical separator line between zones
-        let separator = SKSpriteNode(
-            color: SKColor(white: 1.0, alpha: 0.4),
-            size: CGSize(width: 2, height: overlayHeight)
-        )
-        separator.anchorPoint = CGPoint(x: 0.5, y: 0)
-        separator.position = CGPoint(x: -size.width / 2 + movementWidth, y: -size.height / 2)
-        controlsNode.addChild(separator)
-
-        // Fade out overlays after 5 seconds
+        // Fade out after 5 seconds
         let fadeAction = SKAction.sequence([
             SKAction.wait(forDuration: 5.0),
-            SKAction.fadeAlpha(to: 0.05, duration: 1.0)
+            SKAction.fadeAlpha(to: 0.0, duration: 1.0),
+            SKAction.removeFromParent()
         ])
         controlsNode.run(fadeAction)
-    }
-
-    private func createArrowLabel(text: String, size: CGFloat) -> SKLabelNode {
-        let label = SKLabelNode(text: text)
-        label.fontSize = size
-        label.fontColor = SKColor(white: 1.0, alpha: 0.7)
-        label.verticalAlignmentMode = .center
-        label.horizontalAlignmentMode = .center
-        return label
     }
 
     // MARK: - Update Loop
@@ -301,7 +231,7 @@ class GameScene: SKScene {
         gameState.updateTime(deltaTime)
 
         // Update player with current input
-        player.update(deltaTime: deltaTime, moveDirection: moveDirection, isJumpHeld: isJumpPressed)
+        player.update(deltaTime: deltaTime, moveDirection: moveDirection)
 
         // Update enemies
         for enemy in enemies where !enemy.isDead {
@@ -342,10 +272,11 @@ class GameScene: SKScene {
         }
     }
 
-    // MARK: - Touch Handling (Simplified)
+    // MARK: - Touch Handling (Drag + Tap System)
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let view = view else { return }
+        let currentTime = CACurrentMediaTime()
 
         for touch in touches {
             let viewLocation = touch.location(in: view)
@@ -357,20 +288,25 @@ class GameScene: SKScene {
                 continue
             }
 
-            // Left third = movement, Right two-thirds = jump
-            let movementWidth = view.bounds.width / 3.0
-
-            if viewLocation.x < movementWidth {
-                // Movement zone
-                movementTouchID = touchID
-                updateMovementFromTouch(viewLocation, in: view)
-            } else {
-                // Jump zone
-                jumpTouchID = touchID
-                isJumpPressed = true
-                jumpPressTime = lastUpdateTime
-                player.startJump()
+            // Check pause menu if paused
+            if isGamePaused {
+                if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
+                    if pauseMenu.handleTouchBegan(at: cameraLocation) {
+                        continue
+                    }
+                }
+                continue  // Ignore other touches when paused
             }
+
+            // Create tracked touch
+            let trackedTouch = TrackedTouch(
+                id: touchID,
+                startLocation: viewLocation,
+                startTime: currentTime,
+                currentLocation: viewLocation,
+                isDrag: false
+            )
+            activeTouches[touchID] = trackedTouch
         }
     }
 
@@ -381,41 +317,129 @@ class GameScene: SKScene {
             let viewLocation = touch.location(in: view)
             let touchID = touch.hash
 
-            if touchID == movementTouchID {
-                updateMovementFromTouch(viewLocation, in: view)
+            // Handle pause menu touch move
+            if isGamePaused {
+                let cameraLocation = touch.location(in: cameraNode)
+                if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
+                    pauseMenu.handleTouchMoved(at: cameraLocation)
+                }
+                continue
+            }
+
+            guard var trackedTouch = activeTouches[touchID] else { continue }
+
+            trackedTouch.currentLocation = viewLocation
+
+            // Check if moved beyond dead zone (becomes a drag)
+            if !trackedTouch.isDrag {
+                let dx = viewLocation.x - trackedTouch.startLocation.x
+                let dy = viewLocation.y - trackedTouch.startLocation.y
+                let distance = hypot(dx, dy)
+
+                if distance > GameConstants.dragDeadZone {
+                    trackedTouch.isDrag = true
+
+                    // Claim as drag touch if none exists
+                    if dragTouchID == nil {
+                        dragTouchID = touchID
+                    }
+                }
+            }
+
+            activeTouches[touchID] = trackedTouch
+
+            // Update movement if this is the drag touch
+            if dragTouchID == touchID {
+                updateMovementFromDrag(trackedTouch)
             }
         }
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let currentTime = CACurrentMediaTime()
+
         for touch in touches {
             let touchID = touch.hash
 
-            if touchID == movementTouchID {
-                movementTouchID = nil
+            // Handle pause menu touch end
+            if isGamePaused {
+                let cameraLocation = touch.location(in: cameraNode)
+                if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
+                    pauseMenu.handleTouchEnded(at: cameraLocation)
+                }
+                continue
+            }
+
+            guard let trackedTouch = activeTouches[touchID] else { continue }
+
+            // Was this the drag touch?
+            if dragTouchID == touchID {
+                dragTouchID = nil
                 moveDirection = 0
             }
-            if touchID == jumpTouchID {
-                jumpTouchID = nil
-                isJumpPressed = false
-                player.endJump()
+
+            // Check if this was a tap (short duration, minimal movement)
+            let duration = currentTime - trackedTouch.startTime
+            let movement = hypot(
+                trackedTouch.currentLocation.x - trackedTouch.startLocation.x,
+                trackedTouch.currentLocation.y - trackedTouch.startLocation.y
+            )
+
+            let isTap = duration < GameConstants.tapMaxDuration && movement < GameConstants.tapMaxMovement
+
+            if isTap {
+                // Check for double-tap
+                let timeSinceLastTap = currentTime - lastTapTime
+                let distanceFromLastTap = hypot(
+                    trackedTouch.startLocation.x - lastTapLocation.x,
+                    trackedTouch.startLocation.y - lastTapLocation.y
+                )
+
+                if timeSinceLastTap < GameConstants.doubleTapWindow && distanceFromLastTap < 100 {
+                    // Double-tap detected - high jump
+                    player.startHighJump()
+                    lastTapTime = 0  // Reset to prevent triple-tap
+                } else {
+                    // Single tap - low jump
+                    player.startLowJump()
+                    lastTapTime = currentTime
+                    lastTapLocation = trackedTouch.startLocation
+                }
             }
+
+            // Clean up
+            activeTouches.removeValue(forKey: touchID)
         }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        touchesEnded(touches, with: event)
+        for touch in touches {
+            let touchID = touch.hash
+
+            if isGamePaused {
+                if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
+                    pauseMenu.handleTouchCancelled()
+                }
+            }
+
+            if dragTouchID == touchID {
+                dragTouchID = nil
+                moveDirection = 0
+            }
+
+            activeTouches.removeValue(forKey: touchID)
+        }
     }
 
-    private func updateMovementFromTouch(_ location: CGPoint, in view: SKView) {
-        let movementWidth = view.bounds.width / 3.0
-        let midPoint = movementWidth / 2.0
+    private func updateMovementFromDrag(_ touch: TrackedTouch) {
+        let dx = touch.currentLocation.x - touch.startLocation.x
 
-        // Note: UIKit Y is inverted, but we only care about X here
-        if location.x < midPoint {
-            moveDirection = -1
+        if dx > GameConstants.dragDeadZone {
+            moveDirection = 1  // Move right
+        } else if dx < -GameConstants.dragDeadZone {
+            moveDirection = -1  // Move left
         } else {
-            moveDirection = 1
+            moveDirection = 0  // In dead zone = stop
         }
     }
 
@@ -433,28 +457,80 @@ class GameScene: SKScene {
     }
 
     private func showPauseOverlay() {
-        let overlay = SKSpriteNode(color: SKColor(white: 0, alpha: 0.7), size: size)
-        overlay.zPosition = 150
-        overlay.name = "pauseOverlay"
-        cameraNode.addChild(overlay)
-
-        let pauseLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        pauseLabel.text = "PAUSED"
-        pauseLabel.fontSize = 32
-        pauseLabel.fontColor = .white
-        pauseLabel.position = CGPoint(x: 0, y: 20)
-        overlay.addChild(pauseLabel)
-
-        let tapLabel = SKLabelNode(fontNamed: "Menlo")
-        tapLabel.text = "Tap pause to continue"
-        tapLabel.fontSize = 16
-        tapLabel.fontColor = .gray
-        tapLabel.position = CGPoint(x: 0, y: -30)
-        overlay.addChild(tapLabel)
+        let pauseMenu = PauseMenuOverlay(viewSize: size)
+        pauseMenu.delegate = self
+        cameraNode.addChild(pauseMenu)
+        pauseMenu.animateIn()
     }
 
     private func hidePauseOverlay() {
-        cameraNode.childNode(withName: "pauseOverlay")?.removeFromParent()
+        if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
+            pauseMenu.animateOut { [weak pauseMenu] in
+                pauseMenu?.removeFromParent()
+            }
+        }
+    }
+
+    private func restartLevel() {
+        // Unpause
+        isGamePaused = false
+        self.isPaused = false
+
+        // Remove pause overlay immediately
+        cameraNode.childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+
+        // Reset game state
+        gameState.reset()
+
+        // Reset input
+        moveDirection = 0
+        activeTouches.removeAll()
+        dragTouchID = nil
+        lastTapTime = 0
+
+        // Remove existing enemies
+        for enemy in enemies {
+            enemy.removeFromParent()
+        }
+        enemies.removeAll()
+
+        // Remove existing items
+        for item in items {
+            item.removeFromParent()
+        }
+        items.removeAll()
+
+        // Remove fireballs
+        for fireball in fireballs {
+            fireball.removeFromParent()
+        }
+        fireballs.removeAll()
+
+        // Remove blocks
+        for block in blocks {
+            block.removeFromParent()
+        }
+        blocks.removeAll()
+
+        // Reload level
+        loadLevel()
+
+        // Reset player
+        player.reset(at: levelData.playerStart)
+
+        // Reconfigure camera
+        cameraController.configure(
+            camera: cameraNode,
+            player: player,
+            levelBounds: levelBounds,
+            viewportSize: size
+        )
+
+        // Update HUD
+        hud.updateScore(gameState.score)
+        hud.updateCoins(gameState.coins)
+        hud.updateLives(gameState.lives)
+        hud.updateTime(gameState.timeRemaining)
     }
 
     // MARK: - Death & Respawn
@@ -480,9 +556,9 @@ class GameScene: SKScene {
 
         // Reset input
         moveDirection = 0
-        isJumpPressed = false
-        movementTouchID = nil
-        jumpTouchID = nil
+        activeTouches.removeAll()
+        dragTouchID = nil
+        lastTapTime = 0
 
         cameraController.configure(
             camera: cameraNode,
@@ -649,5 +725,17 @@ extension GameScene: CollisionHandlerDelegate {
 
     func collisionHandlerDidReachFlagpole() {
         handleLevelComplete()
+    }
+}
+
+// MARK: - PauseMenuDelegate
+
+extension GameScene: PauseMenuDelegate {
+    func pauseMenuDidSelectResume() {
+        togglePause()
+    }
+
+    func pauseMenuDidSelectRestart() {
+        restartLevel()
     }
 }

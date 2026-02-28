@@ -143,4 +143,9 @@ class GameStateManager {
         delegate?.gameStateDidUpdateLives(lives)
         delegate?.gameStateDidUpdateTime(timeRemaining)
     }
+
+    /// Full reset for level restart (alias for resetForNewGame)
+    func reset() {
+        resetForNewGame()
+    }
 }
