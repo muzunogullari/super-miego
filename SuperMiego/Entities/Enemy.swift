@@ -67,6 +67,14 @@ class Enemy: SKSpriteNode {
         body.mass = 0.1
 
         physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: bodySize)
+            overlay.position = .zero
+            overlay.zPosition = 0.1
+            overlay.name = "collisionDebug"
+            addChild(overlay)
+        }
     }
 
     // MARK: - Update

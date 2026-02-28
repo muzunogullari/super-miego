@@ -90,4 +90,10 @@ struct GameConstants {
     // MARK: - Jump Forces (Tap System)
     static let lowJumpForce: CGFloat = 312            // Single tap - 60% of high jump
     static let highJumpForce: CGFloat = 520           // Double tap - full jump
+
+    // MARK: - Debug
+    struct Debug {
+        /// When true, draws semi-transparent red overlays on all collision bodies.
+        static let showCollisionOverlays = false
+    }
 }

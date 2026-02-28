@@ -95,6 +95,21 @@ class BlockNode: SKSpriteNode {
         body.restitution = 0
 
         physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let overlay: SKSpriteNode
+            if case .platform = blockType {
+                overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                                      size: CGSize(width: size.width, height: 4))
+                overlay.position = CGPoint(x: 0, y: size.height / 2 - 2)
+            } else {
+                overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: size)
+                overlay.position = .zero
+            }
+            overlay.zPosition = 0.1
+            overlay.name = "collisionDebug"
+            addChild(overlay)
+        }
     }
 
     // MARK: - Hit From Below

@@ -53,6 +53,10 @@ class GameScene: SKScene {
         loadLevel()
         setupPlayer()
         setupHUD()
+
+        if GameConstants.Debug.showCollisionOverlays {
+            addCollisionOverlaysToAllNodes(self)
+        }
     }
 
     private func setupScene() {
@@ -88,10 +92,11 @@ class GameScene: SKScene {
         }
 
         // Distant trees
+        let treeAlpha: CGFloat = GameConstants.Debug.showCollisionOverlays ? 0.1 : 0.5
         for i in 0..<50 {
             let treeHeight = CGFloat.random(in: 80...180)
             let tree = SKSpriteNode(
-                color: SKColor(red: 0.15, green: 0.25, blue: 0.2, alpha: 0.5),
+                color: SKColor(red: 0.15, green: 0.25, blue: 0.2, alpha: treeAlpha),
                 size: CGSize(width: 50, height: treeHeight)
             )
             tree.anchorPoint = CGPoint(x: 0.5, y: 0)
@@ -737,5 +742,47 @@ extension GameScene: PauseMenuDelegate {
 
     func pauseMenuDidSelectRestart() {
         restartLevel()
+    }
+}
+
+// MARK: - Debug Collision Overlays
+
+extension GameScene {
+    /// Recursively walks the node tree and adds a red overlay to every node
+    /// that has a physics body, unless it already has one.
+    private func addCollisionOverlaysToAllNodes(_ root: SKNode) {
+        for child in root.children {
+            if let body = child.physicsBody,
+               child.childNode(withName: "collisionDebug") == nil {
+                let overlaySize: CGSize
+                let overlayPos: CGPoint
+
+                if let sprite = child as? SKSpriteNode {
+                    overlaySize = sprite.size
+                    overlayPos = .zero
+                } else if let bodyFrame = body.node?.frame {
+                    overlaySize = bodyFrame.size
+                    overlayPos = .zero
+                } else {
+                    overlaySize = CGSize(width: 32, height: 32)
+                    overlayPos = .zero
+                }
+
+                let categoryStr = String(body.categoryBitMask, radix: 2)
+                let collisionStr = String(body.collisionBitMask, radix: 2)
+                print("[CollisionDebug] Found untagged physics body: node=\(child.name ?? "<unnamed>") cat=\(categoryStr) col=\(collisionStr) pos=\(child.position) size=\(overlaySize)")
+
+                let overlay = SKSpriteNode(
+                    color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                    size: overlaySize
+                )
+                overlay.position = overlayPos
+                overlay.zPosition = 100
+                overlay.name = "collisionDebug"
+                child.addChild(overlay)
+            }
+
+            addCollisionOverlaysToAllNodes(child)
+        }
     }
 }

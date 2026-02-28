@@ -73,6 +73,14 @@ class ItemNode: SKSpriteNode {
         }
 
         physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: size)
+            overlay.position = .zero
+            overlay.zPosition = 0.1
+            overlay.name = "collisionDebug"
+            addChild(overlay)
+        }
     }
 
     // MARK: - Spawn
@@ -199,6 +207,14 @@ class Fireball: SKSpriteNode {
         body.angularDamping = 0
 
         physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: size)
+            overlay.position = .zero
+            overlay.zPosition = 0.1
+            overlay.name = "collisionDebug"
+            addChild(overlay)
+        }
     }
 
     func update(deltaTime: TimeInterval) {

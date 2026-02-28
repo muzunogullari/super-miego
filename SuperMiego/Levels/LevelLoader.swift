@@ -118,6 +118,18 @@ class LevelLoader {
                     body.isDynamic = false
                     deathZone.physicsBody = body
                     deathZone.position = position
+
+                    if GameConstants.Debug.showCollisionOverlays {
+                        let deathZoneOverlay = SKSpriteNode(
+                            color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                            size: CGSize(width: tileSize, height: tileSize)
+                        )
+                        deathZoneOverlay.position = .zero
+                        deathZoneOverlay.zPosition = 0.1
+                        deathZoneOverlay.name = "collisionDebug"
+                        deathZone.addChild(deathZoneOverlay)
+                    }
+
                     parentNode.addChild(deathZone)
 
                     // Visual water
@@ -192,6 +204,17 @@ class LevelLoader {
         pipeBody.isDynamic = false
         pipe.physicsBody = pipeBody
 
+        if GameConstants.Debug.showCollisionOverlays {
+            let collisionDebug = SKSpriteNode(
+                color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                size: pipe.size
+            )
+            collisionDebug.position = .zero
+            collisionDebug.zPosition = 100
+            collisionDebug.name = "collisionDebug"
+            pipe.addChild(collisionDebug)
+        }
+
         parentNode.addChild(pipe)
 
         // Pipe top lip
@@ -238,12 +261,24 @@ class LevelLoader {
         container.addChild(flag)
 
         // Physics for detection
-        let body = SKPhysicsBody(rectangleOf: CGSize(width: 20, height: poleHeight), center: CGPoint(x: 0, y: poleHeight / 2))
+        let bodySize = CGSize(width: 20, height: poleHeight)
+        let body = SKPhysicsBody(rectangleOf: bodySize, center: CGPoint(x: 0, y: poleHeight / 2))
         body.categoryBitMask = PhysicsCategory.flagpole
         body.collisionBitMask = 0
         body.contactTestBitMask = PhysicsCategory.player
         body.isDynamic = false
         container.physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let flagpoleOverlay = SKSpriteNode(
+                color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                size: bodySize
+            )
+            flagpoleOverlay.position = CGPoint(x: 0, y: poleHeight / 2)
+            flagpoleOverlay.zPosition = 0.1
+            flagpoleOverlay.name = "collisionDebug"
+            container.addChild(flagpoleOverlay)
+        }
 
         return container
     }
@@ -260,6 +295,17 @@ class LevelLoader {
         body.contactTestBitMask = PhysicsCategory.player
         body.isDynamic = false
         coin.physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let coinOverlay = SKSpriteNode(
+                color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5),
+                size: coin.size
+            )
+            coinOverlay.position = .zero
+            coinOverlay.zPosition = 0.1
+            coinOverlay.name = "collisionDebug"
+            coin.addChild(coinOverlay)
+        }
 
         // Spinning animation
         let spin = SKAction.repeatForever(SKAction.sequence([

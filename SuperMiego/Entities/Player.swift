@@ -73,7 +73,22 @@ class Player: SKSpriteNode {
     private func setupPhysics() {
         // Slightly smaller physics body for better feel
         let bodySize = CGSize(width: size.width - 4, height: size.height - 2)
-        let body = SKPhysicsBody(rectangleOf: bodySize)
+
+        // Beveled bottom corners prevent catching on tile seams between adjacent ground blocks
+        let halfW = bodySize.width / 2
+        let halfH = bodySize.height / 2
+        let bevel: CGFloat = 4
+        let path = CGMutablePath()
+        path.addLines(between: [
+            CGPoint(x: -halfW, y: halfH),
+            CGPoint(x: halfW, y: halfH),
+            CGPoint(x: halfW, y: -halfH + bevel),
+            CGPoint(x: halfW - bevel, y: -halfH),
+            CGPoint(x: -halfW + bevel, y: -halfH),
+            CGPoint(x: -halfW, y: -halfH + bevel),
+        ])
+        path.closeSubpath()
+        let body = SKPhysicsBody(polygonFrom: path)
 
         body.categoryBitMask = PhysicsCategory.player
         body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
@@ -86,6 +101,14 @@ class Player: SKSpriteNode {
         body.mass = 0.1
 
         physicsBody = body
+
+        if GameConstants.Debug.showCollisionOverlays {
+            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: bodySize)
+            overlay.position = .zero
+            overlay.zPosition = 0.1
+            overlay.name = "collisionDebug"
+            addChild(overlay)
+        }
     }
 
     // MARK: - Update
