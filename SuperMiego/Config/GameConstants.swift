@@ -83,6 +83,7 @@ struct GameConstants {
 
     // MARK: - Touch Input
     static let dragDeadZone: CGFloat = 20.0           // Pixels before drag registers
+    static let dragMaxDistance: CGFloat = 120.0       // Pixels for full speed
     static let tapMaxDuration: TimeInterval = 0.25    // Max time for tap gesture
     static let doubleTapWindow: TimeInterval = 0.30   // Window between taps for double-tap
     static let tapMaxMovement: CGFloat = 15.0         // Max movement distance for tap gesture

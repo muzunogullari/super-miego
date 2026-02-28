@@ -61,7 +61,7 @@ class GameScene: SKScene {
         backgroundColor = SKColor(red: 0.4, green: 0.6, blue: 0.7, alpha: 1.0)
 
         // Let SpriteKit handle gravity - don't divide by framerate
-        physicsWorld.gravity = CGVector(dx: 0, dy: -15)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -12)  // Lower gravity for floatier jumps
     }
 
     private func setupWorldNode() {
@@ -437,13 +437,19 @@ class GameScene: SKScene {
 
     private func updateMovementFromDrag(_ touch: TrackedTouch) {
         let dx = touch.currentLocation.x - touch.startLocation.x
+        let absDx = abs(dx)
 
-        if dx > GameConstants.dragDeadZone {
-            moveDirection = 1  // Move right
-        } else if dx < -GameConstants.dragDeadZone {
-            moveDirection = -1  // Move left
-        } else {
+        if absDx < GameConstants.dragDeadZone {
             moveDirection = 0  // In dead zone = stop
+        } else {
+            // Proportional speed: more drag = faster (up to max)
+            let effectiveDrag = absDx - GameConstants.dragDeadZone
+            let maxEffectiveDrag = GameConstants.dragMaxDistance - GameConstants.dragDeadZone
+            let speedRatio = min(effectiveDrag / maxEffectiveDrag, 1.0)
+
+            // Direction with proportional magnitude (0.3 to 1.0 range for smoother control)
+            let magnitude = 0.3 + (speedRatio * 0.7)
+            moveDirection = dx > 0 ? magnitude : -magnitude
         }
     }
 

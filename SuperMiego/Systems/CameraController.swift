@@ -39,15 +39,14 @@ class CameraController {
         let maxX = max(minX, levelBounds.width - viewportSize.width / 2)
         newX = max(minX, min(maxX, newX))
 
-        // Camera Y follows player - faster smoothing to keep player visible
-        // Center player vertically with slight offset down
-        let targetY = player.position.y + viewportSize.height * 0.15
-        let smoothingY: CGFloat = 0.15  // Faster Y tracking than X
+        // Camera Y follows player directly - center on player
+        let targetY = player.position.y
+        let smoothingY: CGFloat = 0.2  // Fast Y tracking
         var newY = camera.position.y + (targetY - camera.position.y) * smoothingY
 
-        // Clamp Y to level bounds (don't go below ground level view)
-        let minY = viewportSize.height / 2
-        let maxY = max(minY, levelBounds.height - viewportSize.height / 2)
+        // Clamp Y - allow camera to go lower but not too far
+        let minY = viewportSize.height * 0.4  // Allow camera to go lower
+        let maxY = levelBounds.height
         newY = max(minY, min(maxY, newY))
 
         camera.position = CGPoint(x: newX, y: newY)

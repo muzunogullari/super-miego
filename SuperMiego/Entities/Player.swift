@@ -39,8 +39,8 @@ class Player: SKSpriteNode {
     private var currentJumpType: JumpType = .none
 
     // MARK: - Movement
-    private let moveSpeed: CGFloat = 180
-    private let airMoveSpeed: CGFloat = 140
+    private let moveSpeed: CGFloat = 200
+    private let airMoveSpeed: CGFloat = 220  // Higher than ground for good air control
     private let jumpForce: CGFloat = 520
     private let jumpHoldForce: CGFloat = 280
     private let maxJumpHoldTime: TimeInterval = 0.2
@@ -64,7 +64,7 @@ class Player: SKSpriteNode {
     // MARK: - Initialization
 
     init() {
-        let size = CGSize(width: 28, height: 32)
+        let size = CGSize(width: 56, height: 64)  // 2x scale
         super.init(texture: nil, color: .clear, size: size)
 
         name = "player"
@@ -208,14 +208,14 @@ class Player: SKSpriteNode {
         if direction != 0 {
             body.velocity.dx = direction * speed
         } else {
-            // Quick stop on ground, gradual in air
+            // Quick stop on ground, keep momentum in air
             if isOnGround {
                 body.velocity.dx *= 0.8
                 if abs(body.velocity.dx) < 10 {
                     body.velocity.dx = 0
                 }
             } else {
-                body.velocity.dx *= 0.95
+                body.velocity.dx *= 0.99  // Keep most momentum in air
             }
         }
     }
@@ -371,7 +371,7 @@ class Player: SKSpriteNode {
 
     private func grow() {
         playerState = .big
-        let newSize = CGSize(width: 28, height: 56)
+        let newSize = CGSize(width: 56, height: 112)  // 2x scale big
 
         // Move up so we don't clip into ground
         position.y += (newSize.height - size.height) / 2
@@ -385,7 +385,7 @@ class Player: SKSpriteNode {
 
     private func shrink() {
         playerState = .small
-        let newSize = CGSize(width: 28, height: 32)
+        let newSize = CGSize(width: 56, height: 64)  // 2x scale small
         size = newSize
 
         physicsBody = nil
@@ -472,7 +472,7 @@ class Player: SKSpriteNode {
         isHidden = false
         alpha = 1.0
 
-        size = CGSize(width: 28, height: 32)
+        size = CGSize(width: 56, height: 64)  // 2x scale
         texture = idleTexture
         color = .clear
         removeAction(forKey: "runAnimation")
