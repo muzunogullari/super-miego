@@ -139,11 +139,15 @@ class Player: SKSpriteNode {
         for tex in [idleTexture!, jumpTexture!, deadTexture!] + runFrames {
             tex.filteringMode = .nearest
         }
+
     }
 
     private func updateAnimation(moveDirection: CGFloat) {
+        let spriteSize = CGSize(width: 56, height: 64)
+
         if playerState == .dead {
             texture = deadTexture
+            size = spriteSize
             removeAction(forKey: "runAnimation")
             isRunAnimating = false
             return
@@ -151,6 +155,7 @@ class Player: SKSpriteNode {
 
         if !isOnGround {
             texture = jumpTexture
+            size = spriteSize
             removeAction(forKey: "runAnimation")
             isRunAnimating = false
             return
@@ -159,11 +164,13 @@ class Player: SKSpriteNode {
         if abs(moveDirection) > 0 || abs(physicsBody?.velocity.dx ?? 0) > 20 {
             if !isRunAnimating {
                 isRunAnimating = true
+                size = spriteSize
                 let animate = SKAction.animate(with: runFrames, timePerFrame: 0.1)
                 run(SKAction.repeatForever(animate), withKey: "runAnimation")
             }
         } else {
             texture = idleTexture
+            size = spriteSize
             removeAction(forKey: "runAnimation")
             isRunAnimating = false
         }
