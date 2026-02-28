@@ -20,6 +20,10 @@ class Enemy: SKSpriteNode {
 
     private let walkSpeed: CGFloat = 50
 
+    // MARK: - Textures & Animation
+    private var walkFrames: [SKTexture] = []
+    private var deadTexture: SKTexture?
+
     // MARK: - Initialization
 
     init(type: EnemyType) {
@@ -31,13 +35,13 @@ class Enemy: SKSpriteNode {
         switch type {
         case .goomba:
             size = CGSize(width: 28, height: 28)
-            color = SKColor(red: 0.6, green: 0.3, blue: 0.2, alpha: 1.0) // Brown
+            color = .clear
         case .koopa:
             size = CGSize(width: 28, height: 36)
-            color = SKColor(red: 0.2, green: 0.5, blue: 0.2, alpha: 1.0) // Green
+            color = SKColor(red: 0.2, green: 0.5, blue: 0.2, alpha: 1.0)
         case .piranha:
             size = CGSize(width: 28, height: 40)
-            color = SKColor(red: 0.7, green: 0.2, blue: 0.2, alpha: 1.0) // Red
+            color = SKColor(red: 0.7, green: 0.2, blue: 0.2, alpha: 1.0)
         }
 
         super.init(texture: nil, color: color, size: size)
@@ -45,11 +49,30 @@ class Enemy: SKSpriteNode {
         name = "enemy"
         zPosition = 5
 
+        if type == .goomba {
+            loadGoombaTextures()
+        }
         setupPhysics()
     }
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    private func loadGoombaTextures() {
+        let walk1 = SKTexture(imageNamed: "goomba_walk1")
+        let walk2 = SKTexture(imageNamed: "goomba_walk2")
+        deadTexture = SKTexture(imageNamed: "goomba_dead")
+
+        for tex in [walk1, walk2, deadTexture!] {
+            tex.filteringMode = .nearest
+        }
+
+        walkFrames = [walk1, walk2]
+        texture = walk1
+
+        let waddle = SKAction.animate(with: walkFrames, timePerFrame: 0.25)
+        run(SKAction.repeatForever(waddle), withKey: "waddleAnimation")
     }
 
     private func setupPhysics() {
@@ -113,10 +136,13 @@ class Enemy: SKSpriteNode {
             physicsBody?.collisionBitMask = 0
             physicsBody?.contactTestBitMask = 0
 
-            // Flatten animation
+            removeAction(forKey: "waddleAnimation")
+            if let dead = deadTexture {
+                texture = dead
+            }
+
             run(SKAction.sequence([
-                SKAction.scaleY(to: 0.3, duration: 0.1),
-                SKAction.wait(forDuration: 0.3),
+                SKAction.wait(forDuration: 0.5),
                 SKAction.fadeOut(withDuration: 0.2),
                 SKAction.removeFromParent()
             ]))
@@ -155,6 +181,7 @@ class Enemy: SKSpriteNode {
 
     func hitByFireball() {
         state = .dead
+        removeAction(forKey: "waddleAnimation")
 
         physicsBody?.collisionBitMask = 0
         physicsBody?.contactTestBitMask = 0
