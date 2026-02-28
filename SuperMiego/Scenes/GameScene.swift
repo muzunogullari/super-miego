@@ -32,8 +32,6 @@ class GameScene: SKScene {
 
     private var activeTouches: [Int: TrackedTouch] = [:]
     private var dragTouchID: Int? = nil
-    private var lastTapTime: TimeInterval = 0
-    private var lastTapLocation: CGPoint = .zero
     private var moveDirection: CGFloat = 0
 
     // MARK: - State
@@ -63,7 +61,7 @@ class GameScene: SKScene {
         backgroundColor = SKColor(red: 0.4, green: 0.6, blue: 0.7, alpha: 1.0)
 
         // Let SpriteKit handle gravity - don't divide by framerate
-        physicsWorld.gravity = CGVector(dx: 0, dy: -30)
+        physicsWorld.gravity = CGVector(dx: 0, dy: -15)
     }
 
     private func setupWorldNode() {
@@ -295,6 +293,12 @@ class GameScene: SKScene {
 
             // Check pause menu if paused
             if isGamePaused {
+                // Check for game over overlay tap
+                if cameraNode.childNode(withName: "gameOverOverlay") != nil {
+                    restartLevel()
+                    continue
+                }
+
                 if let pauseMenu = cameraNode.childNode(withName: "pauseMenuOverlay") as? PauseMenuOverlay {
                     if pauseMenu.handleTouchBegan(at: cameraLocation) {
                         continue
@@ -312,6 +316,7 @@ class GameScene: SKScene {
                 isDrag: false
             )
             activeTouches[touchID] = trackedTouch
+            print("[TAP] touchBegan id=\(touchID) at \(viewLocation)")
         }
     }
 
@@ -375,10 +380,14 @@ class GameScene: SKScene {
                 continue
             }
 
-            guard let trackedTouch = activeTouches[touchID] else { continue }
+            guard let trackedTouch = activeTouches[touchID] else {
+                print("[TAP] touchEnded id=\(touchID) - NOT IN activeTouches!")
+                continue
+            }
 
             // Was this the drag touch?
             if dragTouchID == touchID {
+                print("[TAP] touchEnded id=\(touchID) - was drag touch, clearing")
                 dragTouchID = nil
                 moveDirection = 0
             }
@@ -391,25 +400,15 @@ class GameScene: SKScene {
             )
 
             let isTap = duration < GameConstants.tapMaxDuration && movement < GameConstants.tapMaxMovement
+            print("[TAP] touchEnded id=\(touchID) duration=\(String(format: "%.3f", duration))s movement=\(String(format: "%.1f", movement))px isDrag=\(trackedTouch.isDrag) isTap=\(isTap)")
+            print("[TAP]   thresholds: maxDuration=\(GameConstants.tapMaxDuration)s maxMovement=\(GameConstants.tapMaxMovement)px")
 
             if isTap {
-                // Check for double-tap
-                let timeSinceLastTap = currentTime - lastTapTime
-                let distanceFromLastTap = hypot(
-                    trackedTouch.startLocation.x - lastTapLocation.x,
-                    trackedTouch.startLocation.y - lastTapLocation.y
-                )
-
-                if timeSinceLastTap < GameConstants.doubleTapWindow && distanceFromLastTap < 100 {
-                    // Double-tap detected - high jump
-                    player.startHighJump()
-                    lastTapTime = 0  // Reset to prevent triple-tap
-                } else {
-                    // Single tap - low jump
-                    player.startLowJump()
-                    lastTapTime = currentTime
-                    lastTapLocation = trackedTouch.startLocation
-                }
+                // Tap detected - try to jump
+                print("[TAP]   -> TAP -> attempting jump")
+                player.tryJump()
+            } else {
+                print("[TAP]   -> NOT A TAP (duration or movement exceeded)")
             }
 
             // Clean up
@@ -481,8 +480,9 @@ class GameScene: SKScene {
         isGamePaused = false
         self.isPaused = false
 
-        // Remove pause overlay immediately
+        // Remove pause overlay and game over overlay
         cameraNode.childNode(withName: "pauseMenuOverlay")?.removeFromParent()
+        cameraNode.childNode(withName: "gameOverOverlay")?.removeFromParent()
 
         // Reset game state
         gameState.reset()
@@ -491,7 +491,6 @@ class GameScene: SKScene {
         moveDirection = 0
         activeTouches.removeAll()
         dragTouchID = nil
-        lastTapTime = 0
 
         // Remove existing enemies
         for enemy in enemies {
@@ -563,7 +562,6 @@ class GameScene: SKScene {
         moveDirection = 0
         activeTouches.removeAll()
         dragTouchID = nil
-        lastTapTime = 0
 
         cameraController.configure(
             camera: cameraNode,

@@ -30,17 +30,27 @@ class CameraController {
         let leadOffset: CGFloat = 60
         let targetX = player.position.x + (player.xScale > 0 ? leadOffset : -leadOffset)
 
-        // Smooth follow
-        let smoothing: CGFloat = 0.08
-        var newX = camera.position.x + (targetX - camera.position.x) * smoothing
+        // Smooth follow X
+        let smoothingX: CGFloat = 0.08
+        var newX = camera.position.x + (targetX - camera.position.x) * smoothingX
 
-        // Clamp to level bounds
+        // Clamp X to level bounds
         let minX = viewportSize.width / 2
         let maxX = max(minX, levelBounds.width - viewportSize.width / 2)
         newX = max(minX, min(maxX, newX))
 
-        // Camera Y stays fixed (classic Mario style)
-        camera.position = CGPoint(x: newX, y: viewportSize.height / 2)
+        // Camera Y follows player - faster smoothing to keep player visible
+        // Center player vertically with slight offset down
+        let targetY = player.position.y + viewportSize.height * 0.15
+        let smoothingY: CGFloat = 0.15  // Faster Y tracking than X
+        var newY = camera.position.y + (targetY - camera.position.y) * smoothingY
+
+        // Clamp Y to level bounds (don't go below ground level view)
+        let minY = viewportSize.height / 2
+        let maxY = max(minY, levelBounds.height - viewportSize.height / 2)
+        newY = max(minY, min(maxY, newY))
+
+        camera.position = CGPoint(x: newX, y: newY)
     }
 
     // MARK: - Helpers

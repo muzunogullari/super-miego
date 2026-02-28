@@ -88,8 +88,8 @@ struct GameConstants {
     static let tapMaxMovement: CGFloat = 15.0         // Max movement distance for tap gesture
 
     // MARK: - Jump Forces (Tap System)
-    static let lowJumpForce: CGFloat = 312            // Single tap - 60% of high jump
-    static let highJumpForce: CGFloat = 520           // Double tap - full jump
+    static let lowJumpForce: CGFloat = 609            // Ground jump (870 * 0.7)
+    static let highJumpForce: CGFloat = 861           // Air jump (1230 * 0.7)
 
     // MARK: - Debug
     struct Debug {

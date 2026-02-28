@@ -33,6 +33,7 @@ class Player: SKSpriteNode {
     private var isJumping: Bool = false
     private var jumpHoldTime: TimeInterval = 0
     private var canJump: Bool = true
+    private var airJumpsRemaining: Int = 3  // Allow up to 3 air jumps
     private var coyoteTime: TimeInterval = 0
     private let coyoteTimeDuration: TimeInterval = 0.1
     private var currentJumpType: JumpType = .none
@@ -92,7 +93,7 @@ class Player: SKSpriteNode {
 
         body.categoryBitMask = PhysicsCategory.player
         body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
-        body.contactTestBitMask = PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
+        body.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
 
         body.allowsRotation = false
         body.friction = 0.1
@@ -164,17 +165,17 @@ class Player: SKSpriteNode {
     private func updateJump(deltaTime: TimeInterval) {
         guard let body = physicsBody else { return }
 
-        // Only high jumps get hold bonus for variable height
-        if isJumping && currentJumpType == .high && jumpHoldTime < maxJumpHoldTime && body.velocity.dy > 0 {
-            body.velocity.dy += jumpHoldForce * CGFloat(deltaTime) * 60
-            jumpHoldTime += deltaTime
-        }
-        // Low jumps get no additional force - fixed height
+        // Tap-based jumping: no hold bonus needed
+        // Both low and high jumps have fixed heights determined by initial force
 
         // Reset jump state when landing
         if isOnGround && body.velocity.dy <= 0 {
+            if isJumping {
+                print("[JUMP] landed - resetting jump state")
+            }
             isJumping = false
             canJump = true
+            airJumpsRemaining = 3  // Reset air jumps on landing
             currentJumpType = .none
         }
     }
@@ -229,32 +230,40 @@ class Player: SKSpriteNode {
 
     // MARK: - Input Actions
 
+    /// Called on tap - handles both ground jump and air jumps (up to 3)
+    func tryJump() {
+        print("[JUMP] tryJump called - isOnGround=\(isOnGround) airJumpsRemaining=\(airJumpsRemaining) canJump=\(canJump) coyoteTime=\(coyoteTime)")
+        guard playerState != .dead else {
+            print("[JUMP]   -> REJECTED: player dead")
+            return
+        }
+
+        if isOnGround || coyoteTime > 0 {
+            // Ground jump - low jump
+            print("[JUMP]   -> GROUND JUMP (low)")
+            isJumping = true
+            canJump = false
+            airJumpsRemaining = 3  // Reset air jumps when jumping from ground
+            coyoteTime = 0
+            currentJumpType = .low
+            physicsBody?.velocity.dy = GameConstants.lowJumpForce
+        } else if airJumpsRemaining > 0 {
+            // Air jump - high jump
+            print("[JUMP]   -> AIR JUMP (high) - \(airJumpsRemaining) remaining")
+            airJumpsRemaining -= 1
+            currentJumpType = .high
+            physicsBody?.velocity.dy = GameConstants.highJumpForce
+        } else {
+            print("[JUMP]   -> REJECTED: not on ground and no air jumps remaining")
+        }
+    }
+
     func startLowJump() {
-        guard playerState != .dead else { return }
-        guard canJump && (isOnGround || coyoteTime > 0) else { return }
-
-        isJumping = true
-        canJump = false
-        jumpHoldTime = 0
-        coyoteTime = 0
-        currentJumpType = .low
-
-        // Lower force, no hold bonus will be applied
-        physicsBody?.velocity.dy = GameConstants.lowJumpForce
+        tryJump()
     }
 
     func startHighJump() {
-        guard playerState != .dead else { return }
-        guard canJump && (isOnGround || coyoteTime > 0) else { return }
-
-        isJumping = true
-        canJump = false
-        jumpHoldTime = 0
-        coyoteTime = 0
-        currentJumpType = .high
-
-        // Full force + hold bonus will be applied in updateJump
-        physicsBody?.velocity.dy = GameConstants.highJumpForce
+        tryJump()
     }
 
     func shoot() -> Bool {
@@ -396,6 +405,7 @@ class Player: SKSpriteNode {
         isJumping = false
         jumpHoldTime = 0
         canJump = true
+        airJumpsRemaining = 3
         coyoteTime = 0
         currentJumpType = .none
         groundContactCount = 0
@@ -409,7 +419,7 @@ class Player: SKSpriteNode {
 
         physicsBody?.velocity = .zero
         physicsBody?.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
-        physicsBody?.contactTestBitMask = PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
+        physicsBody?.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
         physicsBody?.affectedByGravity = true
     }
 }
