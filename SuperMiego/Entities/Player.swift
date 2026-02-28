@@ -54,16 +54,24 @@ class Player: SKSpriteNode {
     private var blinkTimer: TimeInterval = 0
     private var previousState: PlayerState = .small
 
+    // MARK: - Textures & Animation
+    private var idleTexture: SKTexture!
+    private var jumpTexture: SKTexture!
+    private var deadTexture: SKTexture!
+    private var runFrames: [SKTexture] = []
+    private var isRunAnimating: Bool = false
+
     // MARK: - Initialization
 
     init() {
         let size = CGSize(width: 28, height: 32)
-        let color = SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
-        super.init(texture: nil, color: color, size: size)
+        super.init(texture: nil, color: .clear, size: size)
 
         name = "player"
         zPosition = 10
 
+        loadTextures()
+        texture = idleTexture
         setupPhysics()
     }
 
@@ -112,6 +120,55 @@ class Player: SKSpriteNode {
         }
     }
 
+    // MARK: - Textures
+
+    private func loadTextures() {
+        idleTexture = SKTexture(imageNamed: "player_idle")
+        jumpTexture = SKTexture(imageNamed: "player_jump")
+        deadTexture = SKTexture(imageNamed: "player_dead")
+
+        // Split 3-frame horizontal sprite sheet into individual frames
+        let runSheet = SKTexture(imageNamed: "player_run")
+        let frameWidth: CGFloat = 1.0 / 3.0
+        for i in 0..<3 {
+            let rect = CGRect(x: CGFloat(i) * frameWidth, y: 0, width: frameWidth, height: 1.0)
+            runFrames.append(SKTexture(rect: rect, in: runSheet))
+        }
+
+        // Nearest-neighbor filtering for crisp pixel art
+        for tex in [idleTexture!, jumpTexture!, deadTexture!] + runFrames {
+            tex.filteringMode = .nearest
+        }
+    }
+
+    private func updateAnimation(moveDirection: CGFloat) {
+        if playerState == .dead {
+            texture = deadTexture
+            removeAction(forKey: "runAnimation")
+            isRunAnimating = false
+            return
+        }
+
+        if !isOnGround {
+            texture = jumpTexture
+            removeAction(forKey: "runAnimation")
+            isRunAnimating = false
+            return
+        }
+
+        if abs(moveDirection) > 0 || abs(physicsBody?.velocity.dx ?? 0) > 20 {
+            if !isRunAnimating {
+                isRunAnimating = true
+                let animate = SKAction.animate(with: runFrames, timePerFrame: 0.1)
+                run(SKAction.repeatForever(animate), withKey: "runAnimation")
+            }
+        } else {
+            texture = idleTexture
+            removeAction(forKey: "runAnimation")
+            isRunAnimating = false
+        }
+    }
+
     // MARK: - Update
 
     func update(deltaTime: TimeInterval, moveDirection: CGFloat) {
@@ -122,6 +179,7 @@ class Player: SKSpriteNode {
         updateJump(deltaTime: deltaTime)
         updateTimers(deltaTime: deltaTime)
         updateFacing(direction: moveDirection)
+        updateAnimation(moveDirection: moveDirection)
     }
 
     private func updateGroundState(deltaTime: TimeInterval) {
@@ -300,7 +358,6 @@ class Player: SKSpriteNode {
             grow()
         }
         playerState = .fire
-        color = SKColor.orange
         playerDelegate?.playerDidCollectPowerUp(self, type: .fireFlower)
     }
 
@@ -320,7 +377,6 @@ class Player: SKSpriteNode {
         position.y += (newSize.height - size.height) / 2
 
         size = newSize
-        color = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
 
         // Update physics body
         physicsBody = nil
@@ -331,7 +387,6 @@ class Player: SKSpriteNode {
         playerState = .small
         let newSize = CGSize(width: 28, height: 32)
         size = newSize
-        color = SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
 
         physicsBody = nil
         setupPhysics()
@@ -350,7 +405,6 @@ class Player: SKSpriteNode {
         switch playerState {
         case .fire:
             playerState = .big
-            color = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)
             isInvulnerable = true
             invulnerabilityTimer = 2.0
             blinkTimer = 0.08
@@ -369,6 +423,10 @@ class Player: SKSpriteNode {
     func die() {
         guard playerState != .dead else { return }
         playerState = .dead
+
+        texture = deadTexture
+        removeAction(forKey: "runAnimation")
+        isRunAnimating = false
 
         // Stop all physics
         physicsBody?.velocity = .zero
@@ -415,7 +473,10 @@ class Player: SKSpriteNode {
         alpha = 1.0
 
         size = CGSize(width: 28, height: 32)
-        color = SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)
+        texture = idleTexture
+        color = .clear
+        removeAction(forKey: "runAnimation")
+        isRunAnimating = false
 
         physicsBody?.velocity = .zero
         physicsBody?.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
