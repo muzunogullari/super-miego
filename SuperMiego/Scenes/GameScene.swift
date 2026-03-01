@@ -7,6 +7,11 @@ class GameScene: SKScene {
     private var hud: HUD!
     private var worldNode: SKNode!
 
+    // MARK: - Parallax Background
+    private var skyLayer: SKNode!
+    private var distantLayer: SKNode!
+    private var nearbyLayer: SKNode!
+
     // MARK: - Systems
     private var cameraController: CameraController!
     private var collisionHandler: CollisionHandler!
@@ -49,6 +54,7 @@ class GameScene: SKScene {
         setupCamera()
         setupSystems()
         loadLevel()
+        createBackground()
         setupPlayer()
         setupHUD()
 
@@ -68,40 +74,99 @@ class GameScene: SKScene {
         worldNode = SKNode()
         worldNode.name = "world"
         addChild(worldNode)
-
-        // Add background to world
-        createBackground()
     }
 
     private func createBackground() {
-        // Sky layers
-        for i in 0..<3 {
-            let skyStripe = SKSpriteNode(
-                color: SKColor(red: 0.4 + CGFloat(i) * 0.05,
-                              green: 0.55 + CGFloat(i) * 0.05,
-                              blue: 0.65 + CGFloat(i) * 0.02,
-                              alpha: 1.0),
-                size: CGSize(width: 5000, height: size.height / 3)
+        let levelWidth = levelBounds.width
+        let viewHeight = size.height
+
+        // -- Layer 1: Skybox (almost static, parallaxFactor = 0.95) --
+        skyLayer = SKNode()
+        skyLayer.zPosition = -100
+        addChild(skyLayer)
+
+        let skyColors: [(r: CGFloat, g: CGFloat, b: CGFloat)] = [
+            (0.45, 0.55, 0.68),   // top: deeper PNW blue-gray
+            (0.55, 0.65, 0.75),   // mid: cool overcast
+            (0.70, 0.76, 0.80),   // horizon: pale misty
+        ]
+        for i in 0..<skyColors.count {
+            let c = skyColors[i]
+            let stripe = SKSpriteNode(
+                color: SKColor(red: c.r, green: c.g, blue: c.b, alpha: 1.0),
+                size: CGSize(width: levelWidth, height: viewHeight / CGFloat(skyColors.count))
             )
-            skyStripe.anchorPoint = CGPoint(x: 0, y: 0)
-            skyStripe.position = CGPoint(x: 0, y: size.height * CGFloat(2 - i) / 3)
-            skyStripe.zPosition = -100
-            worldNode.addChild(skyStripe)
+            stripe.anchorPoint = CGPoint(x: 0.5, y: 0)
+            stripe.position = CGPoint(x: 0, y: viewHeight * CGFloat(skyColors.count - 1 - i) / CGFloat(skyColors.count))
+            skyLayer.addChild(stripe)
         }
 
-        // Distant trees
-        let treeAlpha: CGFloat = GameConstants.Debug.showCollisionOverlays ? 0.1 : 0.5
-        for i in 0..<50 {
-            let treeHeight = CGFloat.random(in: 80...180)
-            let tree = SKSpriteNode(
-                color: SKColor(red: 0.15, green: 0.25, blue: 0.2, alpha: treeAlpha),
-                size: CGSize(width: 50, height: treeHeight)
-            )
-            tree.anchorPoint = CGPoint(x: 0.5, y: 0)
-            tree.position = CGPoint(x: CGFloat(i) * 100, y: 60)
-            tree.zPosition = -50
-            worldNode.addChild(tree)
+        // -- Layer 2: Distant mountains (slow scroll, parallaxFactor = 0.75) --
+        distantLayer = SKNode()
+        distantLayer.zPosition = -80
+        addChild(distantLayer)
+
+        let mountainTex = SKTexture(imageNamed: "bg_mountains")
+        mountainTex.filteringMode = .nearest
+        let mountainDisplayHeight: CGFloat = viewHeight * 0.55
+        let mountainAspect = mountainTex.size().width / mountainTex.size().height
+        let mountainDisplayWidth = mountainDisplayHeight * mountainAspect
+
+        // Tile the mountain range to cover the parallax span
+        let mountainSpan = levelWidth * 0.7
+        let mountainsNeeded = Int(ceil(mountainSpan / mountainDisplayWidth)) + 1
+        for i in 0..<mountainsNeeded {
+            let mountain = SKSpriteNode(texture: mountainTex,
+                                        size: CGSize(width: mountainDisplayWidth, height: mountainDisplayHeight))
+            mountain.anchorPoint = CGPoint(x: 0, y: 0)
+            mountain.position = CGPoint(x: -mountainSpan / 2 + CGFloat(i) * mountainDisplayWidth, y: 20)
+            mountain.alpha = 0.85
+            distantLayer.addChild(mountain)
         }
+
+        // -- Layer 3: Nearby evergreen trees (moderate scroll, parallaxFactor = 0.4) --
+        nearbyLayer = SKNode()
+        nearbyLayer.zPosition = -60
+        addChild(nearbyLayer)
+
+        let debugFade: CGFloat = GameConstants.Debug.showCollisionOverlays ? 0.15 : 1.0
+        let treeTextures: [SKTexture] = (1...4).map { i in
+            let tex = SKTexture(imageNamed: "bg_tree_\(i)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+
+        let treeSpan = levelWidth * 0.85
+        let treeCount = 30
+        for i in 0..<treeCount {
+            let tex = treeTextures[Int.random(in: 0..<treeTextures.count)]
+            let treeHeight = CGFloat.random(in: 60...140)
+            let treeAspect = tex.size().width / tex.size().height
+            let treeWidth = treeHeight * treeAspect
+
+            let tree = SKSpriteNode(texture: tex,
+                                    size: CGSize(width: treeWidth, height: treeHeight))
+            tree.anchorPoint = CGPoint(x: 0.5, y: 0)
+            let spacing = treeSpan / CGFloat(treeCount)
+            tree.position = CGPoint(
+                x: -treeSpan / 2 + CGFloat(i) * spacing + CGFloat.random(in: -25...25),
+                y: 20 + CGFloat.random(in: -8...8)
+            )
+            tree.alpha = CGFloat.random(in: 0.5...0.8) * debugFade
+            nearbyLayer.addChild(tree)
+        }
+    }
+
+    private func updateParallax() {
+        guard let cam = cameraNode else { return }
+        let camX = cam.position.x
+        let camY = cam.position.y
+        let halfH = size.height / 2
+
+        // parallaxFactor: 1.0 = fully follows camera (static on screen), 0.0 = scrolls with world
+        skyLayer.position = CGPoint(x: camX * 0.95, y: camY - halfH)
+        distantLayer.position = CGPoint(x: camX * 0.75, y: camY - halfH)
+        nearbyLayer.position = CGPoint(x: camX * 0.4, y: camY - halfH)
     }
 
     private func setupSystems() {
@@ -251,6 +316,9 @@ class GameScene: SKScene {
 
         // Update camera
         cameraController.update(deltaTime: deltaTime)
+
+        // Update parallax backgrounds
+        updateParallax()
 
         // Check for fall death
         if player.position.y < -100 && player.playerState != .dead {

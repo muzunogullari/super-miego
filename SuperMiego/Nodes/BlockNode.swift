@@ -43,23 +43,27 @@ class BlockNode: SKSpriteNode {
 
         let size = CGSize(width: GameConstants.tileSize, height: GameConstants.tileSize)
         let color: SKColor
+        var tex: SKTexture? = nil
 
         switch type {
         case .ground:
-            color = SKColor(red: 0.45, green: 0.3, blue: 0.2, alpha: 1.0) // Brown
+            color = SKColor(red: 0.45, green: 0.3, blue: 0.2, alpha: 1.0)
         case .brick:
-            color = SKColor(red: 0.55, green: 0.35, blue: 0.25, alpha: 1.0) // Lighter brown
+            let brickTex = SKTexture(imageNamed: "brick_crate")
+            brickTex.filteringMode = .nearest
+            tex = brickTex
+            color = .clear
         case .question:
-            color = SKColor(red: 0.9, green: 0.75, blue: 0.2, alpha: 1.0) // Gold
+            color = SKColor(red: 0.9, green: 0.75, blue: 0.2, alpha: 1.0)
         case .empty:
-            color = SKColor(red: 0.4, green: 0.35, blue: 0.3, alpha: 1.0) // Dark brown
+            color = SKColor(red: 0.4, green: 0.35, blue: 0.3, alpha: 1.0)
         case .pipe:
-            color = SKColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0) // Dark green
+            color = SKColor(red: 0.3, green: 0.5, blue: 0.3, alpha: 1.0)
         case .platform:
-            color = SKColor(red: 0.5, green: 0.45, blue: 0.4, alpha: 1.0) // Gray-brown
+            color = SKColor(red: 0.5, green: 0.45, blue: 0.4, alpha: 1.0)
         }
 
-        super.init(texture: nil, color: color, size: size)
+        super.init(texture: tex, color: color, size: size)
 
         name = "block"
 
@@ -198,8 +202,11 @@ class BlockNode: SKSpriteNode {
         blockDelegate?.blockDidBreak(self)
 
         // Create particles
+        let particleColor = blockType == .brick
+            ? SKColor(red: 0.55, green: 0.35, blue: 0.2, alpha: 1.0)
+            : color
         for i in 0..<4 {
-            let particle = SKSpriteNode(color: color, size: CGSize(width: 12, height: 12))
+            let particle = SKSpriteNode(color: particleColor, size: CGSize(width: 12, height: 12))
             particle.position = position
             parent?.addChild(particle)
 
