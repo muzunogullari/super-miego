@@ -465,7 +465,9 @@ class GameScene: SKScene {
 
             // Check HUD first (in camera space)
             let cameraLocation = touch.location(in: cameraNode)
+            print("[TOUCH] Checking HUD at cameraLocation: \(cameraLocation)")
             if hud.handleTouch(at: cameraLocation) {
+                print("[TOUCH] HUD handled touch - pause button!")
                 continue
             }
 
@@ -835,12 +837,11 @@ class GameScene: SKScene {
         gameState.completeLevel()
 
         // Animate flag sliding down
-        if let flagpole = worldNode.childNode(withName: "flagpole") {
-            if let flag = flagpole.children.first(where: { $0 is SKSpriteNode && ($0 as! SKSpriteNode).color == SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0) }) {
-                let slideDown = SKAction.moveBy(x: 0, y: -120, duration: 0.8)
-                slideDown.timingMode = .easeOut
-                flag.run(slideDown)
-            }
+        if let flagpole = worldNode.childNode(withName: "flagpole"),
+           let flag = flagpole.childNode(withName: "flag") {
+            let slideDown = SKAction.moveBy(x: 0, y: -120, duration: 0.8)
+            slideDown.timingMode = .easeOut
+            flag.run(slideDown)
         }
 
         // Player victory animation

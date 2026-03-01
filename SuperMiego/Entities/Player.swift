@@ -604,9 +604,10 @@ class Player: SKSpriteNode {
         removeAction(forKey: "runAnimation")
         isRunAnimating = false
 
+        // Recreate physics body for small player size
+        setupPhysics()
+
         physicsBody?.velocity = .zero
-        physicsBody?.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
-        physicsBody?.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
         physicsBody?.affectedByGravity = true
     }
 }

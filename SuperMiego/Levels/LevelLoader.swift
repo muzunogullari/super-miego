@@ -281,6 +281,7 @@ class LevelLoader {
             color: SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0),
             size: CGSize(width: 28, height: 20)
         )
+        flag.name = "flag"
         flag.anchorPoint = CGPoint(x: 0, y: 0.5)
         flag.position = CGPoint(x: 3, y: poleHeight - 15)
         container.addChild(flag)

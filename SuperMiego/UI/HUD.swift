@@ -150,7 +150,11 @@ class HUD: SKNode {
     // MARK: - Touch Handling
 
     func handleTouch(at location: CGPoint) -> Bool {
-        let locationInHUD = convert(location, from: parent!)
+        guard let parentNode = parent else {
+            print("[HUD] No parent node!")
+            return false
+        }
+        let locationInHUD = convert(location, from: parentNode)
 
         // Use expanded hit area for more reliable touch detection
         let buttonFrame = CGRect(
@@ -160,7 +164,10 @@ class HUD: SKNode {
             height: pauseButton.size.height + 20
         )
 
+        print("[HUD] Touch at camera: \(location), in HUD: \(locationInHUD), button frame: \(buttonFrame)")
+
         if buttonFrame.contains(locationInHUD) {
+            print("[HUD] PAUSE BUTTON HIT!")
             onPauseTapped?()
             return true
         }
