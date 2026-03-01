@@ -143,6 +143,10 @@ class HUD: SKNode {
         worldLabel.text = world
     }
 
+    func updateLevel(_ level: Int) {
+        worldLabel.text = "1-\(level)"
+    }
+
     // MARK: - Touch Handling
 
     func handleTouch(at location: CGPoint) -> Bool {

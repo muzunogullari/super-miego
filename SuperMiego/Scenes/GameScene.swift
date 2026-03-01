@@ -43,6 +43,8 @@ class GameScene: SKScene {
     // MARK: - State
     private var lastUpdateTime: TimeInterval = 0
     private var isGamePaused: Bool = false
+    private var currentLevel: Int = 1
+    private var isLevelComplete: Bool = false
 
     // MARK: - Lifecycle
 
@@ -459,6 +461,19 @@ class GameScene: SKScene {
         for touch in touches {
             let touchID = touch.hash
 
+            // Handle level complete tap
+            if isLevelComplete {
+                if let overlay = cameraNode.childNode(withName: "levelCompleteOverlay") {
+                    overlay.removeFromParent()
+                    if currentLevel < LevelManager.totalLevels {
+                        goToNextLevel()
+                    } else {
+                        restartFromLevel1()
+                    }
+                }
+                continue
+            }
+
             // Handle pause menu touch end
             if isGamePaused {
                 let cameraLocation = touch.location(in: cameraNode)
@@ -703,8 +718,23 @@ class GameScene: SKScene {
     // MARK: - Level Complete
 
     private func handleLevelComplete() {
+        guard !isLevelComplete else { return }
+        isLevelComplete = true
         isGamePaused = true
         gameState.completeLevel()
+
+        // Animate flag sliding down
+        if let flagpole = worldNode.childNode(withName: "flagpole") {
+            if let flag = flagpole.children.first(where: { $0 is SKSpriteNode && ($0 as! SKSpriteNode).color == SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0) }) {
+                let slideDown = SKAction.moveBy(x: 0, y: -120, duration: 0.8)
+                slideDown.timingMode = .easeOut
+                flag.run(slideDown)
+            }
+        }
+
+        // Player victory animation
+        player.physicsBody?.velocity = .zero
+        player.physicsBody?.isDynamic = false
 
         run(SKAction.sequence([
             SKAction.wait(forDuration: 1.5),
@@ -717,21 +747,105 @@ class GameScene: SKScene {
     private func showLevelComplete() {
         let overlay = SKSpriteNode(color: SKColor(white: 0, alpha: 0.7), size: size)
         overlay.zPosition = 150
+        overlay.name = "levelCompleteOverlay"
         cameraNode.addChild(overlay)
 
         let completeLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        completeLabel.text = "LEVEL COMPLETE!"
+        completeLabel.text = "LEVEL \(currentLevel) COMPLETE!"
         completeLabel.fontSize = 28
         completeLabel.fontColor = .yellow
-        completeLabel.position = CGPoint(x: 0, y: 30)
+        completeLabel.position = CGPoint(x: 0, y: 50)
         overlay.addChild(completeLabel)
 
         let scoreLabel = SKLabelNode(fontNamed: "Menlo")
         scoreLabel.text = "Score: \(gameState.score)"
         scoreLabel.fontSize = 20
         scoreLabel.fontColor = .white
-        scoreLabel.position = CGPoint(x: 0, y: -20)
+        scoreLabel.position = CGPoint(x: 0, y: 10)
         overlay.addChild(scoreLabel)
+
+        if currentLevel < LevelManager.totalLevels {
+            let continueLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+            continueLabel.text = "TAP TO CONTINUE"
+            continueLabel.fontSize = 18
+            continueLabel.fontColor = .green
+            continueLabel.position = CGPoint(x: 0, y: -40)
+            overlay.addChild(continueLabel)
+
+            // Blink animation
+            let blink = SKAction.sequence([
+                SKAction.fadeAlpha(to: 0.3, duration: 0.5),
+                SKAction.fadeAlpha(to: 1.0, duration: 0.5)
+            ])
+            continueLabel.run(SKAction.repeatForever(blink))
+        } else {
+            let winLabel = SKLabelNode(fontNamed: "Menlo-Bold")
+            winLabel.text = "YOU WIN! 🎉"
+            winLabel.fontSize = 24
+            winLabel.fontColor = .green
+            winLabel.position = CGPoint(x: 0, y: -40)
+            overlay.addChild(winLabel)
+
+            let restartLabel = SKLabelNode(fontNamed: "Menlo")
+            restartLabel.text = "TAP TO RESTART"
+            restartLabel.fontSize = 16
+            restartLabel.fontColor = .white
+            restartLabel.position = CGPoint(x: 0, y: -70)
+            overlay.addChild(restartLabel)
+        }
+    }
+
+    private func goToNextLevel() {
+        currentLevel += 1
+        isLevelComplete = false
+        isGamePaused = false
+
+        // Remove old level
+        worldNode.removeAllChildren()
+        blocks.removeAll()
+        enemies.removeAll()
+        turtles.removeAll()
+        items.removeAll()
+        fireballs.removeAll()
+
+        // Load new level
+        levelData = LevelManager.getData(for: currentLevel)
+        loadLevel()
+
+        // Reset player
+        player.reset(at: levelData.playerStart)
+        player.physicsBody?.isDynamic = true
+        worldNode.addChild(player)
+
+        // Update HUD
+        hud.updateLevel(currentLevel)
+    }
+
+    private func restartFromLevel1() {
+        currentLevel = 1
+        isLevelComplete = false
+        isGamePaused = false
+        gameState.reset()
+
+        // Remove old level
+        worldNode.removeAllChildren()
+        blocks.removeAll()
+        enemies.removeAll()
+        turtles.removeAll()
+        items.removeAll()
+        fireballs.removeAll()
+
+        // Load level 1
+        levelData = LevelManager.getData(for: 1)
+        loadLevel()
+
+        // Reset player
+        player.reset(at: levelData.playerStart)
+        player.physicsBody?.isDynamic = true
+        worldNode.addChild(player)
+
+        // Update HUD
+        hud.updateLevel(1)
     }
 }
 
