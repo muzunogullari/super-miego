@@ -11,6 +11,7 @@ class GameScene: SKScene {
     private var skyLayer: SKNode!
     private var distantLayer: SKNode!
     private var nearbyLayer: SKNode!
+    private var cloudLayer: SKNode!
 
     // MARK: - Systems
     private var cameraController: CameraController!
@@ -158,6 +159,41 @@ class GameScene: SKScene {
             tree.alpha = CGFloat.random(in: 0.5...0.8) * debugFade
             nearbyLayer.addChild(tree)
         }
+
+        // -- Layer 4: Clouds (float across the upper quarter of the screen) --
+        cloudLayer = SKNode()
+        cloudLayer.zPosition = -90
+        addChild(cloudLayer)
+
+        let cloudTextures: [SKTexture] = (1...3).map { i in
+            let tex = SKTexture(imageNamed: "bg_cloud_\(i)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+
+        let cloudCount = 8
+        for i in 0..<cloudCount {
+            let tex = cloudTextures[Int.random(in: 0..<cloudTextures.count)]
+            let cloudHeight = CGFloat.random(in: 25...50)
+            let cloudAspect = tex.size().width / tex.size().height
+            let cloudWidth = cloudHeight * cloudAspect
+
+            let cloud = SKSpriteNode(texture: tex,
+                                     size: CGSize(width: cloudWidth, height: cloudHeight))
+            cloud.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            cloud.alpha = CGFloat.random(in: 0.5...0.8)
+            cloud.name = "cloud"
+
+            let startX = CGFloat.random(in: -levelWidth * 0.3...levelWidth * 0.3)
+            let yPos = viewHeight * CGFloat.random(in: 0.65...0.90)
+            cloud.position = CGPoint(x: startX, y: yPos)
+
+            let driftSpeed = CGFloat.random(in: 8...25)
+            cloud.userData = NSMutableDictionary()
+            cloud.userData?["driftSpeed"] = driftSpeed
+
+            cloudLayer.addChild(cloud)
+        }
     }
 
     private func updateParallax() {
@@ -166,13 +202,28 @@ class GameScene: SKScene {
         let camY = cam.position.y
         let halfH = size.height / 2
 
-        // parallaxFactor: 1.0 = fully follows camera (static on screen), 0.0 = scrolls with world
         // Anchor backgrounds so tree bases align with the top of the ground (2 tiles = 64pt)
         let groundTop = GameConstants.tileSize * 2
         let baseY = camY - halfH + groundTop
         skyLayer.position = CGPoint(x: camX * 0.95, y: baseY)
         distantLayer.position = CGPoint(x: camX * 0.75, y: baseY)
         nearbyLayer.position = CGPoint(x: camX * 0.4, y: baseY)
+
+        // Clouds: fully follows camera vertically (static on screen), drifts horizontally
+        cloudLayer.position = CGPoint(x: camX * 0.95, y: camY - halfH)
+    }
+
+    private func updateClouds(deltaTime: TimeInterval) {
+        let wrapMargin: CGFloat = size.width * 0.6
+        for child in cloudLayer.children {
+            guard let cloud = child as? SKSpriteNode,
+                  let speed = cloud.userData?["driftSpeed"] as? CGFloat else { continue }
+            cloud.position.x += speed * CGFloat(deltaTime)
+            if cloud.position.x > wrapMargin {
+                cloud.position.x = -wrapMargin
+                cloud.position.y = size.height * CGFloat.random(in: 0.65...0.90)
+            }
+        }
     }
 
     private func setupSystems() {
@@ -341,6 +392,7 @@ class GameScene: SKScene {
 
         // Update parallax backgrounds
         updateParallax()
+        updateClouds(deltaTime: deltaTime)
 
         // Check for fall death
         if player.position.y < -100 && player.playerState != .dead {
