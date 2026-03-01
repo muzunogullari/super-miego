@@ -119,7 +119,7 @@ class GameScene: SKScene {
             let mountain = SKSpriteNode(texture: mountainTex,
                                         size: CGSize(width: mountainDisplayWidth, height: mountainDisplayHeight))
             mountain.anchorPoint = CGPoint(x: 0, y: 0)
-            mountain.position = CGPoint(x: -mountainSpan / 2 + CGFloat(i) * mountainDisplayWidth, y: 20)
+            mountain.position = CGPoint(x: -mountainSpan / 2 + CGFloat(i) * mountainDisplayWidth, y: 0)
             mountain.alpha = 0.85
             distantLayer.addChild(mountain)
         }
@@ -150,7 +150,7 @@ class GameScene: SKScene {
             let spacing = treeSpan / CGFloat(treeCount)
             tree.position = CGPoint(
                 x: -treeSpan / 2 + CGFloat(i) * spacing + CGFloat.random(in: -25...25),
-                y: 20 + CGFloat.random(in: -8...8)
+                y: CGFloat.random(in: -5...5)
             )
             tree.alpha = CGFloat.random(in: 0.5...0.8) * debugFade
             nearbyLayer.addChild(tree)
@@ -164,9 +164,12 @@ class GameScene: SKScene {
         let halfH = size.height / 2
 
         // parallaxFactor: 1.0 = fully follows camera (static on screen), 0.0 = scrolls with world
-        skyLayer.position = CGPoint(x: camX * 0.95, y: camY - halfH)
-        distantLayer.position = CGPoint(x: camX * 0.75, y: camY - halfH)
-        nearbyLayer.position = CGPoint(x: camX * 0.4, y: camY - halfH)
+        // Anchor backgrounds so tree bases align with the top of the ground (2 tiles = 64pt)
+        let groundTop = GameConstants.tileSize * 2
+        let baseY = camY - halfH + groundTop
+        skyLayer.position = CGPoint(x: camX * 0.95, y: baseY)
+        distantLayer.position = CGPoint(x: camX * 0.75, y: baseY)
+        nearbyLayer.position = CGPoint(x: camX * 0.4, y: baseY)
     }
 
     private func setupSystems() {
