@@ -82,21 +82,24 @@ class Player: SKSpriteNode {
     }
 
     private func setupPhysics() {
-        // Slightly smaller physics body for better feel
-        let bodySize = CGSize(width: size.width - 4, height: size.height - 2)
+        // Narrower body and extra headroom make 2-tile tunnels traversable without clipping.
+        let horizontalInset: CGFloat = 13
+        let topInset: CGFloat = 6
+        let bottomInset: CGFloat = 1
+        let halfW = size.width / 2 - horizontalInset
+        let topY = size.height / 2 - topInset
+        let bottomY = -size.height / 2 + bottomInset
 
-        // Beveled bottom corners prevent catching on tile seams between adjacent ground blocks
-        let halfW = bodySize.width / 2
-        let halfH = bodySize.height / 2
+        // Beveled bottom corners prevent catching on tile seams between adjacent ground blocks.
         let bevel: CGFloat = 4
         let path = CGMutablePath()
         path.addLines(between: [
-            CGPoint(x: -halfW, y: halfH),
-            CGPoint(x: halfW, y: halfH),
-            CGPoint(x: halfW, y: -halfH + bevel),
-            CGPoint(x: halfW - bevel, y: -halfH),
-            CGPoint(x: -halfW + bevel, y: -halfH),
-            CGPoint(x: -halfW, y: -halfH + bevel),
+            CGPoint(x: -halfW, y: topY),
+            CGPoint(x: halfW, y: topY),
+            CGPoint(x: halfW, y: bottomY + bevel),
+            CGPoint(x: halfW - bevel, y: bottomY),
+            CGPoint(x: -halfW + bevel, y: bottomY),
+            CGPoint(x: -halfW, y: bottomY + bevel),
         ])
         path.closeSubpath()
         let body = SKPhysicsBody(polygonFrom: path)
@@ -114,8 +117,9 @@ class Player: SKSpriteNode {
         physicsBody = body
 
         if GameConstants.Debug.showCollisionOverlays {
-            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: bodySize)
-            overlay.position = .zero
+            let overlaySize = CGSize(width: halfW * 2, height: topY - bottomY)
+            let overlay = SKSpriteNode(color: SKColor(red: 1, green: 0, blue: 0, alpha: 0.5), size: overlaySize)
+            overlay.position = CGPoint(x: 0, y: (topY + bottomY) / 2)
             overlay.zPosition = 0.1
             overlay.name = "collisionDebug"
             addChild(overlay)
