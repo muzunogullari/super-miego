@@ -12,7 +12,7 @@ class TurtleEnemy: SKSpriteNode {
     private let shootInterval: TimeInterval = 2.5
     private var projectileType: ProjectileType
 
-    weak var gameScene: SKScene?
+    weak var projectileContainer: SKNode?
     var isDead: Bool = false
 
     init(projectileType: ProjectileType = .snowflake) {
@@ -109,7 +109,7 @@ class TurtleEnemy: SKSpriteNode {
     }
 
     private func shootProjectile() {
-        guard let scene = gameScene else { return }
+        guard let container = projectileContainer else { return }
 
         let projectile = Projectile(type: projectileType)
 
@@ -118,7 +118,7 @@ class TurtleEnemy: SKSpriteNode {
         projectile.position = CGPoint(x: position.x + offsetX, y: position.y + 20)
         projectile.direction = moveDirection
 
-        scene.addChild(projectile)
+        container.addChild(projectile)
         projectile.launch()  // Give it arc velocity
 
         // Shoot animation - pause briefly

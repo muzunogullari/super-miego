@@ -6,6 +6,7 @@ protocol GameStateDelegate: AnyObject {
     func gameStateDidUpdateLives(_ lives: Int)
     func gameStateDidUpdateTime(_ time: TimeInterval)
     func gameStateDidGetExtraLife()
+    func gameStateDidTimeExpire()
     func gameStateDidTriggerGameOver()
 }
 
@@ -21,6 +22,7 @@ class GameStateManager {
     private(set) var isGameOver: Bool = false
     private(set) var isLevelComplete: Bool = false
     private(set) var isPaused: Bool = false
+    private var hasTimedOut: Bool = false
 
     // Combo tracking
     private var comboCount: Int = 0
@@ -82,15 +84,19 @@ class GameStateManager {
     // MARK: - Time
 
     func updateTime(_ deltaTime: TimeInterval) {
-        guard !isPaused && !isGameOver && !isLevelComplete else { return }
+        guard !isPaused && !isGameOver && !isLevelComplete && !hasTimedOut else { return }
 
         timeRemaining -= deltaTime
-        delegate?.gameStateDidUpdateTime(timeRemaining)
 
         if timeRemaining <= 0 {
             timeRemaining = 0
-            // Time up - player dies
+            hasTimedOut = true
+            delegate?.gameStateDidUpdateTime(timeRemaining)
+            delegate?.gameStateDidTimeExpire()
+            return
         }
+
+        delegate?.gameStateDidUpdateTime(timeRemaining)
     }
 
     func getTimeBonus() -> Int {
@@ -126,6 +132,7 @@ class GameStateManager {
         timeRemaining = GameConstants.levelTimeLimit
         comboCount = 0
         isLevelComplete = false
+        hasTimedOut = false
     }
 
     func resetForNewGame() {
@@ -137,6 +144,7 @@ class GameStateManager {
         isLevelComplete = false
         isPaused = false
         comboCount = 0
+        hasTimedOut = false
 
         delegate?.gameStateDidUpdateScore(score)
         delegate?.gameStateDidUpdateCoins(coins)

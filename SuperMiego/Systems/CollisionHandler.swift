@@ -10,9 +10,15 @@ protocol CollisionHandlerDelegate: AnyObject {
 }
 
 class CollisionHandler: NSObject, SKPhysicsContactDelegate {
+    private struct SupportContactKey: Hashable {
+        let first: Int
+        let second: Int
+    }
+
     weak var delegate: CollisionHandlerDelegate?
     weak var player: Player?
     weak var gameState: GameStateManager?
+    private var activeSupportContacts: Set<SupportContactKey> = []
 
     func didBegin(_ contact: SKPhysicsContact) {
         let collision = contact.bodyA.categoryBitMask | contact.bodyB.categoryBitMask
@@ -21,10 +27,14 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
 
         // Player + Ground/Block (for ground detection)
         if collision == PhysicsCategory.player | PhysicsCategory.ground ||
-           collision == PhysicsCategory.player | PhysicsCategory.block {
+           collision == PhysicsCategory.player | PhysicsCategory.block ||
+           collision == PhysicsCategory.player | PhysicsCategory.platform {
             // Check if player is landing on top
             if isPlayerLandingOn(contact: contact) {
-                player?.contactWithGround()
+                let key = supportContactKey(for: contact)
+                if activeSupportContacts.insert(key).inserted {
+                    player?.contactWithGround()
+                }
             }
 
             // Check if player is hitting block from below
@@ -128,9 +138,17 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
 
         // Player leaving ground
         if collision == PhysicsCategory.player | PhysicsCategory.ground ||
-           collision == PhysicsCategory.player | PhysicsCategory.block {
-            player?.endContactWithGround()
+           collision == PhysicsCategory.player | PhysicsCategory.block ||
+           collision == PhysicsCategory.player | PhysicsCategory.platform {
+            let key = supportContactKey(for: contact)
+            if activeSupportContacts.remove(key) != nil {
+                player?.endContactWithGround()
+            }
         }
+    }
+
+    func resetGroundContactTracking() {
+        activeSupportContacts.removeAll()
     }
 
     private func isPlayerLandingOn(contact: SKPhysicsContact) -> Bool {
@@ -157,6 +175,17 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
 
         // Normal pointing down (< -0.5) means block is above player = hit from below
         return normalY < -0.5
+    }
+
+    private func supportContactKey(for contact: SKPhysicsContact) -> SupportContactKey {
+        let addressA = Int(bitPattern: Unmanaged.passUnretained(contact.bodyA).toOpaque())
+        let addressB = Int(bitPattern: Unmanaged.passUnretained(contact.bodyB).toOpaque())
+
+        if addressA < addressB {
+            return SupportContactKey(first: addressA, second: addressB)
+        } else {
+            return SupportContactKey(first: addressB, second: addressA)
+        }
     }
 
     // MARK: - Player + Enemy

@@ -91,6 +91,7 @@ struct GameConstants {
     // MARK: - Jump Forces (Tap System)
     static let lowJumpForce: CGFloat = 609            // Ground jump (870 * 0.7)
     static let highJumpForce: CGFloat = 861           // Air jump (1230 * 0.7)
+    static let maxAirJumps: Int = 1                   // 1 = double-jump total
 
     // MARK: - Debug
     struct Debug {

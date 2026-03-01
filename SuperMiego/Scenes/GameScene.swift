@@ -50,6 +50,7 @@ class GameScene: SKScene {
     private var isGamePaused: Bool = false
     private var currentLevel: Int = 1
     private var isLevelComplete: Bool = false
+    private var isHandlingPlayerDeath: Bool = false
     private var levelTransitionCooldown: TimeInterval = 0  // Blocks input during level transition
 
     // MARK: - Lifecycle
@@ -268,6 +269,7 @@ class GameScene: SKScene {
         worldNode.addChild(player)
 
         collisionHandler.player = player
+        collisionHandler.resetGroundContactTracking()
 
         // Configure camera after player is positioned
         cameraController.configure(
@@ -314,9 +316,9 @@ class GameScene: SKScene {
             block.blockDelegate = self
         }
 
-        // Set gameScene reference for turtles (needed for shooting projectiles)
+        // Route turtle projectiles through worldNode so they update and reset with the level
         for turtle in turtles {
-            turtle.gameScene = self
+            turtle.projectileContainer = worldNode
         }
     }
 
@@ -688,6 +690,7 @@ class GameScene: SKScene {
     private func restartLevel() {
         // Unpause
         isGamePaused = false
+        isHandlingPlayerDeath = false
         self.isPaused = false
 
         // Remove pause overlay and game over overlay
@@ -743,6 +746,7 @@ class GameScene: SKScene {
 
         // Reset player
         player.reset(at: levelData.playerStart)
+        collisionHandler.resetGroundContactTracking()
 
         // Reconfigure camera
         cameraController.configure(
@@ -762,6 +766,9 @@ class GameScene: SKScene {
     // MARK: - Death & Respawn
 
     private func handlePlayerDeath() {
+        guard !isHandlingPlayerDeath else { return }
+        isHandlingPlayerDeath = true
+
         gameState.loseLife()
 
         if gameState.isGameOver {
@@ -778,7 +785,9 @@ class GameScene: SKScene {
 
     private func respawnPlayer() {
         gameState.resetForNewLife()
+        isHandlingPlayerDeath = false
         player.reset(at: levelData.playerStart)
+        collisionHandler.resetGroundContactTracking()
 
         // Reset input
         moveDirection = 0
@@ -901,6 +910,7 @@ class GameScene: SKScene {
         currentLevel += 1
         isLevelComplete = false
         isGamePaused = false
+        isHandlingPlayerDeath = false
 
         // Reset input state and set transition cooldown to block input
         moveDirection = 0
@@ -922,6 +932,7 @@ class GameScene: SKScene {
 
         // Reset player completely - spawn slightly above ground so physics settles them
         player.reset(at: levelData.playerStart)
+        collisionHandler.resetGroundContactTracking()
         player.physicsBody?.velocity = .zero
         player.physicsBody?.isDynamic = true
         worldNode.addChild(player)
@@ -937,6 +948,7 @@ class GameScene: SKScene {
         currentLevel = 1
         isLevelComplete = false
         isGamePaused = false
+        isHandlingPlayerDeath = false
         gameState.reset()
 
         // Reset input state and set transition cooldown to block input
@@ -959,6 +971,7 @@ class GameScene: SKScene {
 
         // Reset player completely
         player.reset(at: levelData.playerStart)
+        collisionHandler.resetGroundContactTracking()
         player.physicsBody?.velocity = .zero
         player.physicsBody?.isDynamic = true
         worldNode.addChild(player)
@@ -1106,6 +1119,11 @@ extension GameScene: GameStateDelegate {
 
     func gameStateDidGetExtraLife() {
         hud?.showExtraLifeAnimation()
+    }
+
+    func gameStateDidTimeExpire() {
+        guard player.playerState != .dead else { return }
+        player.die()
     }
 
     func gameStateDidTriggerGameOver() {

@@ -33,7 +33,7 @@ class Player: SKSpriteNode {
     private var isJumping: Bool = false
     private var jumpHoldTime: TimeInterval = 0
     private var canJump: Bool = true
-    private var airJumpsRemaining: Int = 3  // Allow up to 3 air jumps
+    private var airJumpsRemaining: Int = GameConstants.maxAirJumps
     private var coyoteTime: TimeInterval = 0
     private let coyoteTimeDuration: TimeInterval = 0.1
     private var currentJumpType: JumpType = .none
@@ -102,8 +102,8 @@ class Player: SKSpriteNode {
         let body = SKPhysicsBody(polygonFrom: path)
 
         body.categoryBitMask = PhysicsCategory.player
-        body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
-        body.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
+        body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform
+        body.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
 
         body.allowsRotation = false
         body.friction = 0.1
@@ -188,6 +188,7 @@ class Player: SKSpriteNode {
         updateGroundState(deltaTime: deltaTime)
         updateMovement(direction: moveDirection)
         updateJump(deltaTime: deltaTime)
+        updatePlatformCollisionMask()
         updateTimers(deltaTime: deltaTime)
         updateFacing(direction: moveDirection)
         updateAnimation(moveDirection: moveDirection)
@@ -197,9 +198,14 @@ class Player: SKSpriteNode {
         // Use velocity to help determine ground state
         guard let velocity = physicsBody?.velocity else { return }
 
-        // Consider grounded if we have ground contacts OR very low vertical velocity while contacts exist
+        // Contacts can miss edge transitions on shapes like pipes, so also probe just below the feet.
         let wasOnGround = isOnGround
-        isOnGround = groundContactCount > 0 && velocity.dy <= 1
+        let hasSupportContact = groundContactCount > 0
+        let hasStandingContact = hasStandingSupportContact()
+        let hasSupportBelow = hasGroundSupportBelow()
+        let hasSupport = hasSupportContact || hasStandingContact || hasSupportBelow
+        let maxGroundedRiseSpeed = GameConstants.lowJumpForce * 0.25
+        isOnGround = hasSupport && velocity.dy <= maxGroundedRiseSpeed
 
         if wasOnGround && !isOnGround {
             // Just left ground - start coyote time
@@ -209,6 +215,69 @@ class Player: SKSpriteNode {
         if coyoteTime > 0 {
             coyoteTime -= deltaTime
         }
+    }
+
+    private func hasGroundSupportBelow() -> Bool {
+        guard let scene else { return false }
+
+        let playerBottom = frame.minY
+        let playerFrame = frame
+        let halfW = size.width / 2
+        let halfH = size.height / 2
+        let supportMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform
+        let footInset: CGFloat = 8
+        let probeDepth: CGFloat = 3
+        let topTolerance: CGFloat = 8
+        let minHorizontalOverlap: CGFloat = 6
+
+        let localProbePoints = [
+            CGPoint(x: -halfW + footInset, y: -halfH - probeDepth),
+            CGPoint(x: 0, y: -halfH - probeDepth),
+            CGPoint(x: halfW - footInset, y: -halfH - probeDepth),
+        ]
+
+        for point in localProbePoints {
+            let scenePoint = convert(point, to: scene)
+            guard let body = scene.physicsWorld.body(at: scenePoint) else { continue }
+            guard let node = body.node else { continue }
+
+            if body.categoryBitMask & supportMask != 0 {
+                let supportTop = node.frame.maxY
+                let horizontalOverlap = min(playerFrame.maxX, node.frame.maxX) - max(playerFrame.minX, node.frame.minX)
+
+                if horizontalOverlap >= minHorizontalOverlap &&
+                    abs(playerBottom - supportTop) <= topTolerance {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    private func hasStandingSupportContact() -> Bool {
+        guard let body = physicsBody else { return false }
+
+        let supportMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform
+        let playerBottom = frame.minY
+        let playerFrame = frame
+        let topTolerance: CGFloat = 8
+        let minHorizontalOverlap: CGFloat = 6
+
+        for contactBody in body.allContactedBodies() {
+            guard contactBody.categoryBitMask & supportMask != 0,
+                  let node = contactBody.node else { continue }
+
+            let supportTop = node.frame.maxY
+            let horizontalOverlap = min(playerFrame.maxX, node.frame.maxX) - max(playerFrame.minX, node.frame.minX)
+
+            if horizontalOverlap >= minHorizontalOverlap &&
+                abs(playerBottom - supportTop) <= topTolerance {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func updateMovement(direction: CGFloat) {
@@ -246,7 +315,7 @@ class Player: SKSpriteNode {
             }
             isJumping = false
             canJump = true
-            airJumpsRemaining = 3  // Reset air jumps on landing
+            airJumpsRemaining = GameConstants.maxAirJumps
             currentJumpType = .none
         }
     }
@@ -298,6 +367,16 @@ class Player: SKSpriteNode {
         }
     }
 
+    private func updatePlatformCollisionMask() {
+        guard let body = physicsBody else { return }
+
+        if body.velocity.dy > 0 {
+            body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block
+        } else {
+            body.collisionBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform
+        }
+    }
+
     private func updateFacing(direction: CGFloat) {
         if direction > 0 {
             facingRight = true
@@ -310,7 +389,7 @@ class Player: SKSpriteNode {
 
     // MARK: - Input Actions
 
-    /// Called on tap - handles both ground jump and air jumps (up to 3)
+    /// Called on tap - handles both ground jump and extra air jumps.
     func tryJump() {
         print("[JUMP] tryJump called - isOnGround=\(isOnGround) airJumpsRemaining=\(airJumpsRemaining) canJump=\(canJump) coyoteTime=\(coyoteTime)")
         guard playerState != .dead else {
@@ -323,7 +402,7 @@ class Player: SKSpriteNode {
             print("[JUMP]   -> GROUND JUMP (low)")
             isJumping = true
             canJump = false
-            airJumpsRemaining = 3  // Reset air jumps when jumping from ground
+            airJumpsRemaining = GameConstants.maxAirJumps
             coyoteTime = 0
             currentJumpType = .low
             physicsBody?.velocity.dy = GameConstants.lowJumpForce
@@ -503,7 +582,7 @@ class Player: SKSpriteNode {
         isJumping = false
         jumpHoldTime = 0
         canJump = true
-        airJumpsRemaining = 3
+        airJumpsRemaining = GameConstants.maxAirJumps
         coyoteTime = 0
         currentJumpType = .none
         groundContactCount = 0
