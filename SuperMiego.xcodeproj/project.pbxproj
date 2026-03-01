@@ -28,6 +28,7 @@
 		A1000019 /* PauseMenuOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019 /* PauseMenuOverlay.swift */; };
 		A1000020 /* TurtleEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* TurtleEnemy.swift */; };
 		A1000021 /* LevelGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* LevelGenerator.swift */; };
+		A1000022 /* background_audio.m4a in Resources */ = {isa = PBXBuildFile; fileRef = A2000022 /* background_audio.m4a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +53,7 @@
 		A2000019 /* PauseMenuOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PauseMenuOverlay.swift; sourceTree = "<group>"; };
 		A2000020 /* TurtleEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtleEnemy.swift; sourceTree = "<group>"; };
 		A2000021 /* LevelGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelGenerator.swift; sourceTree = "<group>"; };
+		A2000022 /* background_audio.m4a */ = {isa = PBXFileReference; lastKnownFileType = audio.m4a; path = background_audio.m4a; sourceTree = "<group>"; };
 		A3000001 /* SuperMiego.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SuperMiego.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -86,6 +88,7 @@
 				A5000009 /* Config */,
 				A5000011 /* UI */,
 				A2000018 /* Assets.xcassets */,
+				A2000022 /* background_audio.m4a */,
 			);
 			path = SuperMiego;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000018 /* Assets.xcassets in Resources */,
+				A1000022 /* background_audio.m4a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

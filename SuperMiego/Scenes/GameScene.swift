@@ -1,4 +1,5 @@
 import SpriteKit
+import AVFoundation
 
 class GameScene: SKScene {
     // MARK: - Nodes
@@ -6,6 +7,9 @@ class GameScene: SKScene {
     private var cameraNode: SKCameraNode!
     private var hud: HUD!
     private var worldNode: SKNode!
+
+    // MARK: - Audio
+    private var bgMusicPlayer: AVAudioPlayer?
 
     // MARK: - Parallax Background
     private var skyLayer: SKNode!
@@ -64,6 +68,23 @@ class GameScene: SKScene {
 
         if GameConstants.Debug.showCollisionOverlays {
             addCollisionOverlaysToAllNodes(self)
+        }
+
+        playBackgroundMusic()
+    }
+
+    private func playBackgroundMusic() {
+        guard let url = Bundle.main.url(forResource: "background_audio", withExtension: "m4a") else {
+            print("[Audio] background_audio.m4a not found in bundle")
+            return
+        }
+        do {
+            bgMusicPlayer = try AVAudioPlayer(contentsOf: url)
+            bgMusicPlayer?.numberOfLoops = -1
+            bgMusicPlayer?.volume = 0.4
+            bgMusicPlayer?.play()
+        } catch {
+            print("[Audio] Failed to play background music: \(error)")
         }
     }
 
