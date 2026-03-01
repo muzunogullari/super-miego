@@ -68,24 +68,24 @@ class PauseMenuOverlay: SKNode {
         titleLabel.zPosition = 3
         addChild(titleLabel)
 
-        // Resume Button (green)
+        // Resume Button (green) - larger for reliable touch
         resumeButton = MenuButton(
             text: "RESUME",
-            size: CGSize(width: 160, height: 44),
+            size: CGSize(width: 180, height: 54),
             color: SKColor(red: 0.2, green: 0.55, blue: 0.3, alpha: 1.0)
         )
-        resumeButton.position = CGPoint(x: 0, y: 0)
+        resumeButton.position = CGPoint(x: 0, y: 5)
         resumeButton.name = "resumeButton"
         resumeButton.zPosition = 3
         addChild(resumeButton)
 
-        // Restart Button (red)
+        // Restart Button (red) - larger for reliable touch
         restartButton = MenuButton(
             text: "RESTART",
-            size: CGSize(width: 160, height: 44),
+            size: CGSize(width: 180, height: 54),
             color: SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0)
         )
-        restartButton.position = CGPoint(x: 0, y: -55)
+        restartButton.position = CGPoint(x: 0, y: -60)
         restartButton.name = "restartButton"
         restartButton.zPosition = 3
         addChild(restartButton)
@@ -97,13 +97,16 @@ class PauseMenuOverlay: SKNode {
         guard let parentNode = parent else { return false }
         let localLocation = convert(location, from: parentNode)
 
-        if resumeButton.hitTest(localLocation) {
+        // Convert to each button's local coordinate system
+        let resumeLocal = resumeButton.convert(localLocation, from: self)
+        if resumeButton.hitTest(resumeLocal) {
             resumeButton.setPressed(true)
             pressedButton = resumeButton
             return true
         }
 
-        if restartButton.hitTest(localLocation) {
+        let restartLocal = restartButton.convert(localLocation, from: self)
+        if restartButton.hitTest(restartLocal) {
             restartButton.setPressed(true)
             pressedButton = restartButton
             return true
@@ -116,7 +119,8 @@ class PauseMenuOverlay: SKNode {
         guard let pressed = pressedButton, let parentNode = parent else { return }
 
         let localLocation = convert(location, from: parentNode)
-        let stillInside = pressed.hitTest(localLocation)
+        let buttonLocal = pressed.convert(localLocation, from: self)
+        let stillInside = pressed.hitTest(buttonLocal)
         pressed.setPressed(stillInside)
     }
 
@@ -124,9 +128,10 @@ class PauseMenuOverlay: SKNode {
         guard let pressed = pressedButton, let parentNode = parent else { return }
 
         let localLocation = convert(location, from: parentNode)
+        let buttonLocal = pressed.convert(localLocation, from: self)
         pressed.setPressed(false)
 
-        if pressed.hitTest(localLocation) {
+        if pressed.hitTest(buttonLocal) {
             // Button was activated
             if pressed === resumeButton {
                 delegate?.pauseMenuDidSelectResume()

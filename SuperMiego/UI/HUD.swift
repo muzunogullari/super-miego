@@ -79,20 +79,20 @@ class HUD: SKNode {
         livesLabel.position = CGPoint(x: 232, y: 145)
         addChild(livesLabel)
 
-        // Pause button (top right corner)
+        // Pause button (top right corner) - 60x60 for reliable touch on device
         pauseButton = SKSpriteNode(color: SKColor(white: 0.3, alpha: 0.8),
-                                   size: CGSize(width: 40, height: 40))
-        pauseButton.position = CGPoint(x: 380, y: 152)
+                                   size: CGSize(width: 60, height: 60))
+        pauseButton.position = CGPoint(x: 340, y: 152)
         pauseButton.name = "pauseButton"
         addChild(pauseButton)
 
         // Pause icon (two bars)
-        let bar1 = SKSpriteNode(color: .white, size: CGSize(width: 6, height: 20))
-        bar1.position = CGPoint(x: -6, y: 0)
+        let bar1 = SKSpriteNode(color: .white, size: CGSize(width: 8, height: 24))
+        bar1.position = CGPoint(x: -8, y: 0)
         pauseButton.addChild(bar1)
 
-        let bar2 = SKSpriteNode(color: .white, size: CGSize(width: 6, height: 20))
-        bar2.position = CGPoint(x: 6, y: 0)
+        let bar2 = SKSpriteNode(color: .white, size: CGSize(width: 8, height: 24))
+        bar2.position = CGPoint(x: 8, y: 0)
         pauseButton.addChild(bar2)
     }
 
@@ -152,7 +152,15 @@ class HUD: SKNode {
     func handleTouch(at location: CGPoint) -> Bool {
         let locationInHUD = convert(location, from: parent!)
 
-        if pauseButton.contains(locationInHUD) {
+        // Use expanded hit area for more reliable touch detection
+        let buttonFrame = CGRect(
+            x: pauseButton.position.x - pauseButton.size.width / 2 - 10,
+            y: pauseButton.position.y - pauseButton.size.height / 2 - 10,
+            width: pauseButton.size.width + 20,
+            height: pauseButton.size.height + 20
+        )
+
+        if buttonFrame.contains(locationInHUD) {
             onPauseTapped?()
             return true
         }

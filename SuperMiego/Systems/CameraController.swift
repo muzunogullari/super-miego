@@ -52,6 +52,20 @@ class CameraController {
         camera.position = CGPoint(x: newX, y: newY)
     }
 
+    // MARK: - Reset
+
+    func reset(to position: CGPoint) {
+        guard let camera = camera else { return }
+
+        let startX = max(viewportSize.width / 2,
+                        min(position.x, levelBounds.width - viewportSize.width / 2))
+        camera.position = CGPoint(x: startX, y: viewportSize.height / 2)
+    }
+
+    func updateBounds(_ bounds: CGRect) {
+        levelBounds = bounds
+    }
+
     // MARK: - Helpers
 
     func getVisibleRect() -> CGRect {

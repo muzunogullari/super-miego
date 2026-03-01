@@ -50,6 +50,7 @@ class GameScene: SKScene {
     private var isGamePaused: Bool = false
     private var currentLevel: Int = 1
     private var isLevelComplete: Bool = false
+    private var levelTransitionCooldown: TimeInterval = 0  // Blocks input during level transition
 
     // MARK: - Lifecycle
 
@@ -285,7 +286,10 @@ class GameScene: SKScene {
     }
 
     private func loadLevel() {
-        levelData = Level1.getData()
+        // Use existing levelData if set, otherwise load level 1
+        if levelData == nil {
+            levelData = LevelManager.getData(for: currentLevel)
+        }
 
         let tileSize = GameConstants.tileSize
         levelBounds = CGRect(
@@ -294,6 +298,9 @@ class GameScene: SKScene {
             width: CGFloat(levelData.width) * tileSize,
             height: CGFloat(levelData.height) * tileSize
         )
+
+        // Update camera bounds for new level
+        cameraController?.updateBounds(levelBounds)
 
         let loader = LevelLoader()
         let levelElements = loader.buildLevel(from: levelData, in: worldNode)
@@ -379,6 +386,12 @@ class GameScene: SKScene {
         }
         lastUpdateTime = currentTime
 
+        // Decrement level transition cooldown (blocks input during transition)
+        if levelTransitionCooldown > 0 {
+            levelTransitionCooldown -= deltaTime
+            moveDirection = 0  // Force stop movement during transition
+        }
+
         // Update game timer
         gameState.updateTime(deltaTime)
 
@@ -454,6 +467,11 @@ class GameScene: SKScene {
                 continue
             }
 
+            // Ignore touches during level complete or transition cooldown
+            if isLevelComplete || levelTransitionCooldown > 0 {
+                continue
+            }
+
             // Check pause menu if paused
             if isGamePaused {
                 // Check for game over overlay tap
@@ -489,6 +507,11 @@ class GameScene: SKScene {
         for touch in touches {
             let viewLocation = touch.location(in: view)
             let touchID = touch.hash
+
+            // Ignore touches during level complete or transition cooldown
+            if isLevelComplete || levelTransitionCooldown > 0 {
+                continue
+            }
 
             // Handle pause menu touch move
             if isGamePaused {
@@ -544,6 +567,11 @@ class GameScene: SKScene {
                         restartFromLevel1()
                     }
                 }
+                continue
+            }
+
+            // Skip input during transition cooldown
+            if levelTransitionCooldown > 0 {
                 continue
             }
 
@@ -669,10 +697,11 @@ class GameScene: SKScene {
         // Reset game state
         gameState.reset()
 
-        // Reset input
+        // Reset input and set transition cooldown to block input
         moveDirection = 0
         activeTouches.removeAll()
         dragTouchID = nil
+        levelTransitionCooldown = 0.3  // Block input for 300ms
 
         // Remove existing enemies
         for enemy in enemies {
@@ -873,6 +902,12 @@ class GameScene: SKScene {
         isLevelComplete = false
         isGamePaused = false
 
+        // Reset input state and set transition cooldown to block input
+        moveDirection = 0
+        dragTouchID = nil
+        activeTouches.removeAll()
+        levelTransitionCooldown = 0.3  // Block input for 300ms
+
         // Remove old level
         worldNode.removeAllChildren()
         blocks.removeAll()
@@ -885,10 +920,14 @@ class GameScene: SKScene {
         levelData = LevelManager.getData(for: currentLevel)
         loadLevel()
 
-        // Reset player
+        // Reset player completely - spawn slightly above ground so physics settles them
         player.reset(at: levelData.playerStart)
+        player.physicsBody?.velocity = .zero
         player.physicsBody?.isDynamic = true
         worldNode.addChild(player)
+
+        // Reset camera to player start
+        cameraController.reset(to: levelData.playerStart)
 
         // Update HUD
         hud.updateLevel(currentLevel)
@@ -899,6 +938,12 @@ class GameScene: SKScene {
         isLevelComplete = false
         isGamePaused = false
         gameState.reset()
+
+        // Reset input state and set transition cooldown to block input
+        moveDirection = 0
+        dragTouchID = nil
+        activeTouches.removeAll()
+        levelTransitionCooldown = 0.3  // Block input for 300ms
 
         // Remove old level
         worldNode.removeAllChildren()
@@ -912,10 +957,14 @@ class GameScene: SKScene {
         levelData = LevelManager.getData(for: 1)
         loadLevel()
 
-        // Reset player
+        // Reset player completely
         player.reset(at: levelData.playerStart)
+        player.physicsBody?.velocity = .zero
         player.physicsBody?.isDynamic = true
         worldNode.addChild(player)
+
+        // Reset camera to player start
+        cameraController.reset(to: levelData.playerStart)
 
         // Update HUD
         hud.updateLevel(1)

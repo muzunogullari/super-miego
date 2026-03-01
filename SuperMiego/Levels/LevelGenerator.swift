@@ -27,7 +27,8 @@ struct LevelGeneratorConfig {
 
     // Enemy settings
     var goombaCount: Int = 2
-    var turtleCount: Int = 1
+    var turtleCount: Int = 1      // Ice turtle (snowflake shooter)
+    var fireTurtleCount: Int = 0  // Fire turtle (fireball shooter)
     var minDistanceBetweenEnemies: Int = 15
     var minEnemyDistanceFromStart: Int = 20
 
@@ -100,7 +101,8 @@ class LevelGenerator {
 
         // More enemies at higher levels
         c.goombaCount = min(1 + level, 5)
-        c.turtleCount = min(level / 2, 3)
+        c.turtleCount = min(level / 2, 3)           // Ice turtles (freeze)
+        c.fireTurtleCount = level >= 3 ? 1 : 0      // Fire turtles start at level 3
 
         // More/wider water gaps
         c.waterGapCount = min(1 + level / 2, 4)
@@ -277,10 +279,18 @@ class LevelGenerator {
             }
         }
 
-        // Place turtles (ice type "T")
+        // Place ice turtles ("T" - snowflake shooter)
         for _ in 0..<config.turtleCount {
             if let col = findValidEnemyPosition(min: minCol, max: maxCol, existing: enemyPositions) {
                 grid[enemyRow][col] = "T"
+                enemyPositions.append(col)
+            }
+        }
+
+        // Place fire turtles ("R" - fireball shooter)
+        for _ in 0..<config.fireTurtleCount {
+            if let col = findValidEnemyPosition(min: minCol, max: maxCol, existing: enemyPositions) {
+                grid[enemyRow][col] = "R"
                 enemyPositions.append(col)
             }
         }
