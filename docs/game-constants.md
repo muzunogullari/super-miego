@@ -115,6 +115,16 @@ Note: Enemy.swift currently uses its own hardcoded sizes (28Ã—28 for goomba, 28Ã
 |----------|-------|-------|
 | `showCollisionOverlays` | false | Renders red overlays on all physics bodies |
 
+## Colors
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `backgroundRed` | `119 / 255` | Standardized non-floor background red channel |
+| `backgroundGreen` | `139 / 255` | Standardized non-floor background green channel |
+| `backgroundBlue` | `170 / 255` | Standardized non-floor background blue channel |
+
+These values are grouped under `GameConstants.Colors` and drive the shared non-floor background fill in both `MenuScene` and `GameScene`, including the procedural sky stripes. The current effective color is RGB(119, 139, 170).
+
 ## Level
 
 | Constant | Value | Notes |

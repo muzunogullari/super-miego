@@ -7,7 +7,7 @@ A SpriteKit-based 2D platformer built with SwiftUI as the app shell. This docume
 ```
 SuperMiego/
 ├── App/
-│   └── SuperMiegoApp.swift          ← SwiftUI entry point, launches MenuScene
+│   └── SuperMiegoApp.swift          ← SwiftUI entry point + UIKit SKView host, launches MenuScene
 ├── Assets.xcassets/
 │   └── Sprites/
 │       ├── Player/                  ← player_idle, player_jump, player_run, player_dead
@@ -47,35 +47,47 @@ SuperMiego/
 
 ```
 SuperMiegoApp (SwiftUI)
-  └─ SpriteView presents MenuScene
-       └─ START GAME transitions to GameScene
-            ├─ didMove(to:)
-            │   ├─ Creates worldNode (container for all game objects)
-            │   ├─ loadLevel() — LevelManager/LevelGenerator for levels 1-5
-            │   ├─ Creates Player, adds to worldNode
-            │   ├─ Sets up CameraController, CollisionHandler, GameStateManager
-            │   ├─ createBackground() — 4-layer parallax (sky, mountains, trees, clouds)
-            │   ├─ Creates HUD (attached to camera, not world)
-            │   └─ playBackgroundMusic() — AVAudioPlayer, loops infinitely
-            └─ update(_:)
-                ├─ GameStateManager.update (timer countdown)
-                ├─ Player.update (movement, jump, animation)
-                ├─ Enemy.update (walk patrol)
-                ├─ TurtleEnemy.update (patrol + projectile firing)
-                ├─ ItemNode.update (mushroom/star movement)
-                ├─ Fireball.update
-                ├─ CameraController.update (follow player)
-                ├─ updateParallax() — repositions background layers relative to camera
-                └─ updateClouds(deltaTime:) — drifts clouds rightward, wraps
+  └─ GameViewControllerRepresentable
+       └─ GameViewController (UIKit)
+            ├─ owns SKView
+            ├─ presents MenuScene
+            ├─ becomes first responder for hardware keyboard input
+            └─ forwards A / D / Space to GameScene when active
+                 └─ START GAME transitions to GameScene
+                      ├─ didMove(to:)
+                      │   ├─ Creates worldNode (container for all game objects)
+                      │   ├─ loadLevel() — LevelManager/LevelGenerator for levels 1-5
+                      │   ├─ Creates Player, adds to worldNode
+                      │   ├─ Sets up CameraController, CollisionHandler, GameStateManager
+                      │   ├─ createBackground() — 4-layer parallax (sky, mountains, trees, clouds)
+                      │   ├─ Creates HUD (attached to camera, not world)
+                      │   └─ playBackgroundMusic() — AVAudioPlayer, loops infinitely
+                      └─ update(_:)
+                          ├─ GameStateManager.update (timer countdown)
+                          ├─ Player.update (movement, jump, animation)
+                          ├─ Enemy.update (walk patrol)
+                          ├─ TurtleEnemy.update (patrol + projectile firing)
+                          ├─ ItemNode.update (mushroom/star movement)
+                          ├─ Fireball.update
+                          ├─ CameraController.update (follow player)
+                          ├─ updateParallax() — repositions background layers relative to camera
+                          └─ updateClouds(deltaTime:) — drifts clouds rightward, wraps
 ```
 
 ## Key Systems
 
-### Input (GameScene)
-Touch-based, implemented directly in GameScene (not via InputManager):
+### Input (GameScene + GameViewController)
+Touch gameplay input is implemented directly in `GameScene` (not via InputManager):
 - **Drag horizontally**: Move left/right. Velocity scales with drag distance (dead zone: 20pt, max: 120pt).
 - **Tap**: Jump. Ground tap = low jump, air tap = high jump (`GameConstants.maxAirJumps`, default: 1 extra jump = double-jump total).
 - The HUD pause button intercepts touches before game input.
+
+There is also hidden hardware keyboard support for simulator/debug use:
+- **A**: Move left
+- **D**: Move right
+- **Space**: Jump
+
+Keyboard events are captured by the UIKit `GameViewController` host and forwarded into `GameScene`. The player-facing HUD text intentionally stays touch-only.
 
 ### Physics (CollisionHandler)
 All collision routing goes through `CollisionHandler`, which implements `SKPhysicsContactDelegate`. It identifies contact pairs by their `categoryBitMask` and dispatches to the appropriate handler (stomp enemy, collect item, hit block, etc.). See `docs/physics.md` for details.
@@ -85,7 +97,7 @@ Horizontal side-scroller camera. Tracks the player with a configurable lead offs
 
 ### Parallax Background (GameScene)
 4 layers, all children of the scene (NOT worldNode). Repositioned every frame in `updateParallax()` based on camera position:
-- **skyLayer** (z: -100, parallax: 0.95): Procedural gradient stripes, PNW overcast sky
+- **skyLayer** (z: -100, parallax: 0.95): Procedural solid-fill stripes using `GameConstants.Colors`, standardized to RGB(119, 139, 170)
 - **cloudLayer** (z: -90): Floating clouds that drift rightward and wrap. Updated in `updateClouds(deltaTime:)`
 - **distantLayer** (z: -80, parallax: 0.75): Tileable mountain range
 - **nearbyLayer** (z: -60, parallax: 0.4): Randomized PNW evergreen tree silhouettes
@@ -113,6 +125,7 @@ The codebase uses delegates extensively to decouple systems:
 ## Important Gotchas
 
 - **InputManager is unused.** GameScene has its own drag+tap input system. InputManager exists but is not wired in.
+- **Hardware keyboard input is not owned by GameScene's responder chain.** It is captured in `GameViewController` and forwarded into `GameScene` helper methods.
 - **AssetNames is partially used.** Player and Enemy load textures by hardcoded string names, not via AssetNames constants.
 - **Levels are Swift code, not data files.** `LevelManager` currently generates all 5 levels via `LevelGenerator`; `Level1.swift` now acts as a wrapper/entry-point file rather than a hand-authored layout.
 - **worldNode vs camera vs background.** Game objects are children of `worldNode`. HUD elements are children of `cameraNode`. Parallax background layers are children of the scene itself (not worldNode, not camera). Don't mix these up.

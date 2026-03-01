@@ -51,13 +51,15 @@ c53dc68 Regenerate all player sprites from unified sheet for consistent art styl
 - **Platforms**: One-way platform collisions are now wired into the player's collision/contact handling.
 - **Timer expiry**: `GameStateManager` now triggers player death when time reaches zero.
 - **Player hitbox**: The small-form player body is beveled at the feet, trimmed at the top, and intentionally narrower so the sprite can fit 2-tile tunnels and match the visible art more closely.
+- **Simulator keyboard controls**: Hidden hardware keyboard controls now exist for debugging (`A` left, `D` right, `Space` jump). They are intentionally not mentioned in the player-facing HUD.
+- **Background color constants**: `GameConstants.Colors` now standardizes the non-floor background fill to RGB(119, 139, 170) across `MenuScene` and `GameScene`.
 
 ## Current File Inventory
 
 ### Swift Files (20 total)
 | File | Purpose |
 |------|---------|
-| `App/SuperMiegoApp.swift` | SwiftUI entry, launches MenuScene |
+| `App/SuperMiegoApp.swift` | SwiftUI entry + UIKit SKView host, launches MenuScene and forwards hardware keyboard input |
 | `Scenes/GameScene.swift` | Main game loop, input, parallax, audio, all delegate implementations |
 | `Scenes/MenuScene.swift` | Title screen |
 | `Entities/Player.swift` | Player state machine, movement, animation, power-ups |
@@ -120,6 +122,7 @@ These entities are still rendered as flat colored rectangles:
 5. **Cloud green fringe**: The cloud chromakey uses an aggressive `is_greenish()` check (g > 150 and g > r*1.3 and g > b*1.3). Standard `is_green()` leaves anti-aliasing fringe on white/light-colored sprites.
 6. **Background music only plays in GameScene**, not MenuScene. It doesn't pause/resume with game pause (the scene `isPaused` pauses SpriteKit actions but not AVAudioPlayer).
 7. **Levels**: The game has 5 levels with progression. `LevelManager` currently routes all 5 through `LevelGenerator.swift`.
+8. **Simulator keyboard input lives in the UIKit host controller.** If keyboard controls break again, inspect `SuperMiegoApp.swift` first, not just `GameScene.swift`.
 
 ## User Preferences
 

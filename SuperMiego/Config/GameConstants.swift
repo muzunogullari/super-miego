@@ -98,4 +98,11 @@ struct GameConstants {
         /// When true, draws semi-transparent red overlays on all collision bodies.
         static let showCollisionOverlays = false
     }
+
+    // MARK: - Colors
+    struct Colors {
+        static let backgroundRed: CGFloat = 119.0 / 255.0
+        static let backgroundGreen: CGFloat = 139.0 / 255.0
+        static let backgroundBlue: CGFloat = 170.0 / 255.0
+    }
 }

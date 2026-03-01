@@ -13,7 +13,12 @@ class MenuScene: SKScene {
     }
 
     private func setupBackground() {
-        backgroundColor = SKColor(red: 0.35, green: 0.55, blue: 0.6, alpha: 1.0)
+        backgroundColor = SKColor(
+            red: GameConstants.Colors.backgroundRed,
+            green: GameConstants.Colors.backgroundGreen,
+            blue: GameConstants.Colors.backgroundBlue,
+            alpha: 1.0
+        )
 
         backgroundLayer = SKNode()
         backgroundLayer.zPosition = -10

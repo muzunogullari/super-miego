@@ -43,7 +43,9 @@ class GameScene: SKScene {
 
     private var activeTouches: [Int: TrackedTouch] = [:]
     private var dragTouchID: Int? = nil
-    private var moveDirection: CGFloat = 0
+    private var touchMoveDirection: CGFloat = 0
+    private var keyboardMoveDirection: CGFloat = 0
+    private var activeMovementKeys: Set<String> = []
 
     // MARK: - State
     private var lastUpdateTime: TimeInterval = 0
@@ -75,6 +77,16 @@ class GameScene: SKScene {
         playBackgroundMusic()
     }
 
+    func viewportDidChangeSize() {
+        guard cameraNode != nil, player != nil, cameraController != nil else { return }
+        cameraController.configure(
+            camera: cameraNode,
+            player: player,
+            levelBounds: levelBounds,
+            viewportSize: size
+        )
+    }
+
     private func playBackgroundMusic() {
         guard let url = Bundle.main.url(forResource: "background_audio", withExtension: "m4a") else {
             print("[Audio] background_audio.m4a not found in bundle")
@@ -91,7 +103,12 @@ class GameScene: SKScene {
     }
 
     private func setupScene() {
-        backgroundColor = SKColor(red: 0.4, green: 0.6, blue: 0.7, alpha: 1.0)
+        backgroundColor = SKColor(
+            red: GameConstants.Colors.backgroundRed,
+            green: GameConstants.Colors.backgroundGreen,
+            blue: GameConstants.Colors.backgroundBlue,
+            alpha: 1.0
+        )
 
         // Let SpriteKit handle gravity - don't divide by framerate
         physicsWorld.gravity = CGVector(dx: 0, dy: -12)  // Lower gravity for floatier jumps
@@ -112,11 +129,14 @@ class GameScene: SKScene {
         skyLayer.zPosition = -100
         addChild(skyLayer)
 
-        let skyColors: [(r: CGFloat, g: CGFloat, b: CGFloat)] = [
-            (0.45, 0.55, 0.68),   // top: deeper PNW blue-gray
-            (0.55, 0.65, 0.75),   // mid: cool overcast
-            (0.70, 0.76, 0.80),   // horizon: pale misty
-        ]
+        let skyColors: [(r: CGFloat, g: CGFloat, b: CGFloat)] = Array(
+            repeating: (
+                GameConstants.Colors.backgroundRed,
+                GameConstants.Colors.backgroundGreen,
+                GameConstants.Colors.backgroundBlue
+            ),
+            count: 3
+        )
         for i in 0..<skyColors.count {
             let c = skyColors[i]
             let stripe = SKSpriteNode(
@@ -359,7 +379,7 @@ class GameScene: SKScene {
 
         // Control instructions
         let instructionLabel = SKLabelNode(fontNamed: "Menlo-Bold")
-        instructionLabel.text = "DRAG to move  |  TAP to jump  |  DOUBLE-TAP for high jump"
+        instructionLabel.text = "DRAG to move  |  TAP to jump"
         instructionLabel.fontSize = 11
         instructionLabel.fontColor = SKColor(white: 1.0, alpha: 0.85)
         instructionLabel.position = CGPoint(x: 0, y: -size.height / 2 + 35)
@@ -391,14 +411,16 @@ class GameScene: SKScene {
         // Decrement level transition cooldown (blocks input during transition)
         if levelTransitionCooldown > 0 {
             levelTransitionCooldown -= deltaTime
-            moveDirection = 0  // Force stop movement during transition
+            touchMoveDirection = 0  // Force stop movement during transition
+            keyboardMoveDirection = 0
+            activeMovementKeys.removeAll()
         }
 
         // Update game timer
         gameState.updateTime(deltaTime)
 
         // Update player with current input
-        player.update(deltaTime: deltaTime, moveDirection: moveDirection)
+        player.update(deltaTime: deltaTime, moveDirection: currentMoveDirection)
 
         // Update enemies
         for enemy in enemies where !enemy.isDead {
@@ -597,7 +619,7 @@ class GameScene: SKScene {
             if dragTouchID == touchID {
                 print("[TAP] touchEnded id=\(touchID) - was drag touch, clearing")
                 dragTouchID = nil
-                moveDirection = 0
+                touchMoveDirection = 0
             }
 
             // Check if this was a tap (short duration, minimal movement)
@@ -636,7 +658,7 @@ class GameScene: SKScene {
 
             if dragTouchID == touchID {
                 dragTouchID = nil
-                moveDirection = 0
+                touchMoveDirection = 0
             }
 
             activeTouches.removeValue(forKey: touchID)
@@ -648,7 +670,7 @@ class GameScene: SKScene {
         let absDx = abs(dx)
 
         if absDx < GameConstants.dragDeadZone {
-            moveDirection = 0  // In dead zone = stop
+            touchMoveDirection = 0  // In dead zone = stop
         } else {
             // Proportional speed: more drag = faster (up to max)
             let effectiveDrag = absDx - GameConstants.dragDeadZone
@@ -657,7 +679,111 @@ class GameScene: SKScene {
 
             // Direction with proportional magnitude (0.3 to 1.0 range for smoother control)
             let magnitude = 0.3 + (speedRatio * 0.7)
-            moveDirection = dx > 0 ? magnitude : -magnitude
+            touchMoveDirection = dx > 0 ? magnitude : -magnitude
+        }
+    }
+
+    // MARK: - Keyboard Input
+
+    @discardableResult
+    func handleKeyboardKeyDown(_ key: String) -> Bool {
+        switch key {
+        case "a":
+            guard canHandleGameplayKeyboardInput else { return true }
+            activeMovementKeys.insert("a")
+            recalculateKeyboardMoveDirection()
+            return true
+
+        case "d":
+            guard canHandleGameplayKeyboardInput else { return true }
+            activeMovementKeys.insert("d")
+            recalculateKeyboardMoveDirection()
+            return true
+
+        case " ":
+            guard canHandleGameplayKeyboardInput else { return true }
+            player.tryJump()
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    @discardableResult
+    func handleKeyboardKeyUp(_ key: String) -> Bool {
+        switch key {
+        case "a", "d":
+            activeMovementKeys.remove(key)
+            recalculateKeyboardMoveDirection()
+            return true
+
+        case " ":
+            return true
+
+        default:
+            return false
+        }
+    }
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var handled = false
+
+        for press in presses {
+            guard let key = press.key?.charactersIgnoringModifiers.lowercased() else { continue }
+            handled = handleKeyboardKeyDown(key) || handled
+        }
+
+        if !handled {
+            super.pressesBegan(presses, with: event)
+        }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var handled = false
+
+        for press in presses {
+            guard let key = press.key?.charactersIgnoringModifiers.lowercased() else { continue }
+            handled = handleKeyboardKeyUp(key) || handled
+        }
+
+        if !handled {
+            super.pressesEnded(presses, with: event)
+        }
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        var handled = false
+
+        for press in presses {
+            guard let key = press.key?.charactersIgnoringModifiers.lowercased() else { continue }
+            handled = handleKeyboardKeyUp(key) || handled
+        }
+
+        if !handled {
+            super.pressesCancelled(presses, with: event)
+        }
+    }
+
+    private var canHandleGameplayKeyboardInput: Bool {
+        !isGamePaused && !isLevelComplete && levelTransitionCooldown <= 0
+    }
+
+    private var currentMoveDirection: CGFloat {
+        if keyboardMoveDirection != 0 {
+            return keyboardMoveDirection
+        }
+        return touchMoveDirection
+    }
+
+    private func recalculateKeyboardMoveDirection() {
+        let movingLeft = activeMovementKeys.contains("a")
+        let movingRight = activeMovementKeys.contains("d")
+
+        if movingLeft == movingRight {
+            keyboardMoveDirection = 0
+        } else {
+            keyboardMoveDirection = movingRight ? 1.0 : -1.0
         }
     }
 
@@ -703,9 +829,11 @@ class GameScene: SKScene {
         gameState.reset()
 
         // Reset input and set transition cooldown to block input
-        moveDirection = 0
+        touchMoveDirection = 0
+        keyboardMoveDirection = 0
         activeTouches.removeAll()
         dragTouchID = nil
+        activeMovementKeys.removeAll()
         levelTransitionCooldown = 0.3  // Block input for 300ms
 
         // Remove existing enemies
@@ -792,9 +920,11 @@ class GameScene: SKScene {
         collisionHandler.resetGroundContactTracking()
 
         // Reset input
-        moveDirection = 0
+        touchMoveDirection = 0
+        keyboardMoveDirection = 0
         activeTouches.removeAll()
         dragTouchID = nil
+        activeMovementKeys.removeAll()
 
         cameraController.configure(
             camera: cameraNode,
@@ -914,9 +1044,11 @@ class GameScene: SKScene {
         isHandlingPlayerDeath = false
 
         // Reset input state and set transition cooldown to block input
-        moveDirection = 0
+        touchMoveDirection = 0
+        keyboardMoveDirection = 0
         dragTouchID = nil
         activeTouches.removeAll()
+        activeMovementKeys.removeAll()
         levelTransitionCooldown = 0.3  // Block input for 300ms
 
         // Remove old level
@@ -953,9 +1085,11 @@ class GameScene: SKScene {
         gameState.reset()
 
         // Reset input state and set transition cooldown to block input
-        moveDirection = 0
+        touchMoveDirection = 0
+        keyboardMoveDirection = 0
         dragTouchID = nil
         activeTouches.removeAll()
+        activeMovementKeys.removeAll()
         levelTransitionCooldown = 0.3  // Block input for 300ms
 
         // Remove old level
