@@ -53,6 +53,8 @@ c53dc68 Regenerate all player sprites from unified sheet for consistent art styl
 - **Player hitbox**: The small-form player body is beveled at the feet, trimmed at the top, and intentionally narrower so the sprite can fit 2-tile tunnels and match the visible art more closely.
 - **Simulator keyboard controls**: Hidden hardware keyboard controls now exist for debugging (`A` left, `D` right, `Space` jump). They are intentionally not mentioned in the player-facing HUD.
 - **Background color constants**: `GameConstants.Colors` now standardizes the non-floor background fill to RGB(119, 139, 170) across `MenuScene` and `GameScene`.
+- **Wall slide fix**: Player surface friction is now `0`, which prevents the character from “gripping” and sliding slowly down walls while holding movement into a jump.
+- **Goomba sizing**: Goombas now use `GameConstants.goombaSize` and occupy a full 32×32 tile visually and physically.
 
 ## Current File Inventory
 
@@ -116,7 +118,7 @@ These entities are still rendered as flat colored rectangles:
 ## Known Issues & Quirks
 
 1. **Player physics body is intentionally not a full rectangle.** It keeps 4px beveled bottom corners to prevent tile-seam snagging, plus a trimmed top and narrower width for tunnel clearance and better visual fit. Do NOT revert to a simple rectangle.
-2. **GameConstants vs actual code**: Enemy sizes in `Enemy.swift` (28×28 goomba) differ from `GameConstants` (32×32). The code values are what's actually used.
+2. **Enemy sizing is only partially centralized**: Goombas now match `GameConstants.goombaSize` (32×32), but koopa and piranha sizes still live directly in `Enemy.swift`.
 3. **InputManager.swift is completely unused.** GameScene implements its own drag+tap system.
 4. **`.pip_tmp/` folder**: Contains locally-installed Pillow for image processing. Keep it uncommitted; if it appears as untracked, exclude it before committing. Reinstall with `pip3 install --target .pip_tmp Pillow` if needed.
 5. **Cloud green fringe**: The cloud chromakey uses an aggressive `is_greenish()` check (g > 150 and g > r*1.3 and g > b*1.3). Standard `is_green()` leaves anti-aliasing fringe on white/light-colored sprites.

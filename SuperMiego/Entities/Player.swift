@@ -109,7 +109,9 @@ class Player: SKSpriteNode {
         body.contactTestBitMask = PhysicsCategory.ground | PhysicsCategory.block | PhysicsCategory.platform | PhysicsCategory.enemy | PhysicsCategory.item | PhysicsCategory.coin | PhysicsCategory.flagpole | PhysicsCategory.deathZone
 
         body.allowsRotation = false
-        body.friction = 0.1
+        // Horizontal movement is driven explicitly in updateMovement(), so surface friction
+        // only creates unwanted wall-sticking when the player jumps into solid tiles.
+        body.friction = 0
         body.restitution = 0
         body.linearDamping = 0
         body.mass = 0.1

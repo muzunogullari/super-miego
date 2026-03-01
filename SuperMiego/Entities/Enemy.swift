@@ -34,7 +34,7 @@ class Enemy: SKSpriteNode {
 
         switch type {
         case .goomba:
-            size = CGSize(width: 28, height: 28)
+            size = GameConstants.goombaSize
             color = .clear
         case .koopa:
             size = CGSize(width: 28, height: 36)
@@ -76,7 +76,13 @@ class Enemy: SKSpriteNode {
     }
 
     private func setupPhysics() {
-        let bodySize = CGSize(width: size.width - 4, height: size.height - 2)
+        let bodySize: CGSize
+        switch enemyType {
+        case .goomba:
+            bodySize = CGSize(width: size.width, height: size.height - 2)
+        case .koopa, .piranha:
+            bodySize = CGSize(width: size.width - 4, height: size.height - 2)
+        }
         let body = SKPhysicsBody(rectangleOf: bodySize)
 
         body.categoryBitMask = PhysicsCategory.enemy

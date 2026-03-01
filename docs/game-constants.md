@@ -59,7 +59,7 @@ Note: `GameScene` currently sets `physicsWorld.gravity` directly to `-12`, so th
 | `koopaSize` | 32×40 | Display size for koopas |
 | `shellSpeed` | 300 | Kicked koopa shell speed |
 
-Note: Enemy.swift currently uses its own hardcoded sizes (28×28 for goomba, 28×36 for koopa) which differ from GameConstants. This is a known inconsistency.
+Note: `Enemy.swift` now uses `GameConstants.goombaSize` for goombas, so the goomba is standardized to one tile (32×32). Koopa sizing still uses its own local values (currently 28×36 walking, 28×24 in shell form), so that part remains a separate tuning path.
 
 ## Items
 
