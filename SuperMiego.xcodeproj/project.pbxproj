@@ -7,25 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* SuperMiegoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001; };
-		A1000002 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002; };
-		A1000003 /* MenuScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003; };
-		A1000004 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004; };
-		A1000005 /* Enemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005; };
-		A1000006 /* BlockNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006; };
-		A1000007 /* ItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007; };
-		A1000008 /* InputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008; };
-		A1000009 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009; };
-		A1000010 /* CollisionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010; };
-		A1000011 /* GameStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000011; };
-		A1000012 /* LevelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012; };
-		A1000013 /* Level1.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013; };
-		A1000014 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014; };
-		A1000015 /* PhysicsCategories.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015; };
-		A1000016 /* AssetNames.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016; };
-		A1000017 /* HUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017; };
-		A1000018 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000018; };
-		A1000019 /* PauseMenuOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019; };
+		A1000001 /* SuperMiegoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* SuperMiegoApp.swift */; };
+		A1000002 /* GameScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* GameScene.swift */; };
+		A1000003 /* MenuScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* MenuScene.swift */; };
+		A1000004 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004 /* Player.swift */; };
+		A1000005 /* Enemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005 /* Enemy.swift */; };
+		A1000006 /* BlockNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006 /* BlockNode.swift */; };
+		A1000007 /* ItemNode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* ItemNode.swift */; };
+		A1000008 /* InputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008 /* InputManager.swift */; };
+		A1000009 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009 /* CameraController.swift */; };
+		A1000010 /* CollisionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010 /* CollisionHandler.swift */; };
+		A1000011 /* GameStateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000011 /* GameStateManager.swift */; };
+		A1000012 /* LevelLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000012 /* LevelLoader.swift */; };
+		A1000013 /* Level1.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000013 /* Level1.swift */; };
+		A1000014 /* GameConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000014 /* GameConstants.swift */; };
+		A1000015 /* PhysicsCategories.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* PhysicsCategories.swift */; };
+		A1000016 /* AssetNames.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* AssetNames.swift */; };
+		A1000017 /* HUD.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* HUD.swift */; };
+		A1000018 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A2000018 /* Assets.xcassets */; };
+		A1000019 /* PauseMenuOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000019 /* PauseMenuOverlay.swift */; };
+		A1000020 /* TurtleEnemy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* TurtleEnemy.swift */; };
+		A1000021 /* LevelGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* LevelGenerator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +50,8 @@
 		A2000017 /* HUD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUD.swift; sourceTree = "<group>"; };
 		A2000018 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A2000019 /* PauseMenuOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PauseMenuOverlay.swift; sourceTree = "<group>"; };
+		A2000020 /* TurtleEnemy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurtleEnemy.swift; sourceTree = "<group>"; };
+		A2000021 /* LevelGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LevelGenerator.swift; sourceTree = "<group>"; };
 		A3000001 /* SuperMiego.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SuperMiego.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -108,6 +112,7 @@
 			children = (
 				A2000004 /* Player.swift */,
 				A2000005 /* Enemy.swift */,
+				A2000020 /* TurtleEnemy.swift */,
 			);
 			path = Entities;
 			sourceTree = "<group>";
@@ -137,6 +142,7 @@
 			children = (
 				A2000012 /* LevelLoader.swift */,
 				A2000013 /* Level1.swift */,
+				A2000021 /* LevelGenerator.swift */,
 			);
 			path = Levels;
 			sourceTree = "<group>";
@@ -255,6 +261,8 @@
 				A1000016 /* AssetNames.swift in Sources */,
 				A1000017 /* HUD.swift in Sources */,
 				A1000019 /* PauseMenuOverlay.swift in Sources */,
+				A1000020 /* TurtleEnemy.swift in Sources */,
+				A1000021 /* LevelGenerator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,7 +395,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 922UX8DG52;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Super Miego";
@@ -420,7 +428,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 922UX8DG52;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Super Miego";

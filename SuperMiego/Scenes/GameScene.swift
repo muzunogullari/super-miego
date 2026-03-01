@@ -20,6 +20,7 @@ class GameScene: SKScene {
     // MARK: - Level Data
     private var blocks: [BlockNode] = []
     private var enemies: [Enemy] = []
+    private var turtles: [TurtleEnemy] = []
     private var items: [SKNode] = []
     private var fireballs: [Fireball] = []
 
@@ -225,10 +226,16 @@ class GameScene: SKScene {
 
         blocks = levelElements.blocks
         enemies = levelElements.enemies
+        turtles = levelElements.turtles
         items = levelElements.items
 
         for block in blocks {
             block.blockDelegate = self
+        }
+
+        // Set gameScene reference for turtles (needed for shooting projectiles)
+        for turtle in turtles {
+            turtle.gameScene = self
         }
     }
 
@@ -307,6 +314,16 @@ class GameScene: SKScene {
         // Update enemies
         for enemy in enemies where !enemy.isDead {
             enemy.update(deltaTime: deltaTime)
+        }
+
+        // Update turtle enemies
+        for turtle in turtles where !turtle.isDead {
+            turtle.update(deltaTime: deltaTime)
+        }
+
+        // Update enemy projectiles
+        worldNode.enumerateChildNodes(withName: "projectile") { node, _ in
+            (node as? Projectile)?.update(deltaTime: deltaTime)
         }
 
         // Update items
@@ -575,6 +592,17 @@ class GameScene: SKScene {
         }
         enemies.removeAll()
 
+        // Remove turtle enemies
+        for turtle in turtles {
+            turtle.removeFromParent()
+        }
+        turtles.removeAll()
+
+        // Remove enemy projectiles
+        worldNode.enumerateChildNodes(withName: "projectile") { node, _ in
+            node.removeFromParent()
+        }
+
         // Remove existing items
         for item in items {
             item.removeFromParent()
@@ -755,6 +783,69 @@ extension GameScene: BlockNodeDelegate {
 
     func blockDidBreak(_ block: BlockNode) {
         // Sound effects would go here
+    }
+
+    func blockDidSpawnDollarBurst(_ block: BlockNode, count: Int, at position: CGPoint) {
+        // Spawn multiple dollar bills that fly out in an arc
+        for i in 0..<count {
+            let coin = createCoinSprite()
+            coin.position = position
+            coin.zPosition = 15
+            worldNode.addChild(coin)
+
+            // Each coin flies at a different angle
+            let spreadAngle = CGFloat.pi / 3  // 60 degree spread
+            let baseAngle = CGFloat.pi / 2  // Start pointing up
+            let angleOffset = spreadAngle * (CGFloat(i) - CGFloat(count - 1) / 2) / CGFloat(max(1, count - 1))
+            let angle = baseAngle + angleOffset
+
+            let speed: CGFloat = 280 + CGFloat.random(in: -30...30)
+            let vx = cos(angle) * speed
+            let vy = sin(angle) * speed
+
+            // Apply physics
+            let body = SKPhysicsBody(rectangleOf: coin.size)
+            body.categoryBitMask = PhysicsCategory.coin
+            body.collisionBitMask = 0
+            body.contactTestBitMask = PhysicsCategory.player
+            body.affectedByGravity = true
+            body.velocity = CGVector(dx: vx, dy: vy)
+            coin.physicsBody = body
+
+            // Collect after landing or timeout
+            coin.run(SKAction.sequence([
+                SKAction.wait(forDuration: 3.0),
+                SKAction.fadeOut(withDuration: 0.5),
+                SKAction.removeFromParent()
+            ]))
+        }
+    }
+
+    func blockDidSpawnEnemy(_ block: BlockNode, at position: CGPoint) {
+        // Spawn a goomba that pops out
+        let enemy = Enemy(type: .goomba)
+        enemy.position = position
+        worldNode.addChild(enemy)
+        enemies.append(enemy)
+
+        // Pop up animation
+        enemy.physicsBody?.velocity = CGVector(dx: 0, dy: 200)
+    }
+
+    private func createCoinSprite() -> SKSpriteNode {
+        let texture = SKTexture(imageNamed: "coin")
+        texture.filteringMode = .nearest
+        let coin = SKSpriteNode(texture: texture, size: CGSize(width: 48, height: 24))
+        coin.name = "coin"
+
+        // Spinning animation
+        let spin = SKAction.repeatForever(SKAction.sequence([
+            SKAction.scaleX(to: 0.3, duration: 0.15),
+            SKAction.scaleX(to: 1.0, duration: 0.15)
+        ]))
+        coin.run(spin)
+
+        return coin
     }
 }
 

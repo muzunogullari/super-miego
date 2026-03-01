@@ -14,6 +14,7 @@ struct PhysicsCategory {
     static let deathZone:   UInt32 = 1 << 9   // 512 - pits
     static let platform:    UInt32 = 1 << 10  // 1024 - one-way platforms
     static let shell:       UInt32 = 1 << 11  // 2048 - kicked koopa shell
+    static let enemyProjectile: UInt32 = 1 << 12  // 4096 - snowflake/fireball from enemies
 
     // Collision masks
     static let playerCollision: UInt32 = ground | block | platform

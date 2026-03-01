@@ -39,9 +39,10 @@ class LevelLoader {
         )
     }
 
-    func buildLevel(from data: LevelData, in parentNode: SKNode) -> (blocks: [BlockNode], enemies: [Enemy], items: [SKNode]) {
+    func buildLevel(from data: LevelData, in parentNode: SKNode) -> (blocks: [BlockNode], enemies: [Enemy], turtles: [TurtleEnemy], items: [SKNode]) {
         var blocks: [BlockNode] = []
         var enemies: [Enemy] = []
+        var turtles: [TurtleEnemy] = []
         var items: [SKNode] = []
 
         let tiles = data.tiles
@@ -95,6 +96,18 @@ class LevelLoader {
                     parentNode.addChild(block)
                     blocks.append(block)
 
+                case "$":  // Surprise box with dollar burst
+                    let block = BlockNode(type: .question, content: .dollarBurst(count: 5))
+                    block.position = position
+                    parentNode.addChild(block)
+                    blocks.append(block)
+
+                case "E":  // Surprise box with enemy
+                    let block = BlockNode(type: .question, content: .enemySurprise)
+                    block.position = position
+                    parentNode.addChild(block)
+                    blocks.append(block)
+
                 case "g":
                     let enemy = Enemy(type: .goomba)
                     enemy.position = position
@@ -106,6 +119,18 @@ class LevelLoader {
                     enemy.position = position
                     parentNode.addChild(enemy)
                     enemies.append(enemy)
+
+                case "T":  // Ice turtle - shoots snowflakes (freeze)
+                    let turtle = TurtleEnemy(projectileType: .snowflake)
+                    turtle.position = position
+                    parentNode.addChild(turtle)
+                    turtles.append(turtle)
+
+                case "R":  // Fire turtle - shoots fireballs (kill)
+                    let turtle = TurtleEnemy(projectileType: .fireball)
+                    turtle.position = position
+                    parentNode.addChild(turtle)
+                    turtles.append(turtle)
 
                 case "W":
                     // Death zone
@@ -167,7 +192,7 @@ class LevelLoader {
             }
         }
 
-        return (blocks, enemies, items)
+        return (blocks, enemies, turtles, items)
     }
 
     private func createPipe(at topPosition: CGPoint, tiles: [[Character]], rowIndex: Int, colIndex: Int, in parentNode: SKNode) {
@@ -284,12 +309,14 @@ class LevelLoader {
     }
 
     private func createCoin(at position: CGPoint) -> SKSpriteNode {
-        let coin = SKSpriteNode(color: SKColor.yellow, size: CGSize(width: 16, height: 16))
+        let texture = SKTexture(imageNamed: "coin")
+        texture.filteringMode = .nearest
+        let coin = SKSpriteNode(texture: texture, size: CGSize(width: 48, height: 24))  // Dollar bill proportions
         coin.position = position
         coin.name = "coin"
         coin.zPosition = 5
 
-        let body = SKPhysicsBody(rectangleOf: coin.size)
+        let body = SKPhysicsBody(rectangleOf: CGSize(width: 44, height: 20))  // Rectangle for bill
         body.categoryBitMask = PhysicsCategory.coin
         body.collisionBitMask = 0
         body.contactTestBitMask = PhysicsCategory.player

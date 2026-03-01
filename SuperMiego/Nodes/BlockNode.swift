@@ -17,11 +17,15 @@ enum BlockContent: Equatable {
     case star
     case oneUp
     case multiCoin(count: Int)
+    case dollarBurst(count: Int)  // Spawns multiple dollar bills
+    case enemySurprise            // Spawns an enemy
 }
 
 protocol BlockNodeDelegate: AnyObject {
     func blockDidSpawnItem(_ block: BlockNode, item: ItemType, at position: CGPoint)
     func blockDidSpawnCoin(_ block: BlockNode, at position: CGPoint)
+    func blockDidSpawnDollarBurst(_ block: BlockNode, count: Int, at position: CGPoint)
+    func blockDidSpawnEnemy(_ block: BlockNode, at position: CGPoint)
     func blockDidBreak(_ block: BlockNode)
 }
 
@@ -71,7 +75,42 @@ class BlockNode: SKSpriteNode {
             coinCount = count
         }
 
+        // Add visual decoration for question blocks
+        if type == .question {
+            setupQuestionBlockVisual()
+        }
+
         setupPhysics()
+    }
+
+    private func setupQuestionBlockVisual() {
+        // Add a "?" label
+        let questionMark = SKLabelNode(fontNamed: "Helvetica-Bold")
+        questionMark.text = "?"
+        questionMark.fontSize = 20
+        questionMark.fontColor = SKColor(red: 0.6, green: 0.4, blue: 0.1, alpha: 1.0)
+        questionMark.verticalAlignmentMode = .center
+        questionMark.horizontalAlignmentMode = .center
+        questionMark.position = .zero
+        questionMark.zPosition = 0.1
+        questionMark.name = "questionMark"
+        addChild(questionMark)
+
+        // Add a subtle bounce animation
+        let bounce = SKAction.sequence([
+            SKAction.moveBy(x: 0, y: 2, duration: 0.4),
+            SKAction.moveBy(x: 0, y: -2, duration: 0.4)
+        ])
+        questionMark.run(SKAction.repeatForever(bounce))
+
+        // Add border/outline effect
+        let border = SKShapeNode(rectOf: CGSize(width: size.width - 4, height: size.height - 4), cornerRadius: 3)
+        border.strokeColor = SKColor(red: 0.7, green: 0.5, blue: 0.15, alpha: 1.0)
+        border.lineWidth = 2
+        border.fillColor = .clear
+        border.position = .zero
+        border.zPosition = 0.05
+        addChild(border)
     }
 
     required init?(coder aDecoder: NSCoder) {
@@ -93,7 +132,7 @@ class BlockNode: SKSpriteNode {
         }
 
         body.collisionBitMask = PhysicsCategory.player | PhysicsCategory.enemy | PhysicsCategory.item
-        body.contactTestBitMask = 0
+        body.contactTestBitMask = PhysicsCategory.player
         body.isDynamic = false
         body.friction = 0.2
         body.restitution = 0
@@ -119,10 +158,15 @@ class BlockNode: SKSpriteNode {
     // MARK: - Hit From Below
 
     func hitFromBelow(byBigPlayer: Bool) {
-        guard !isAnimating else { return }
+        print("[BLOCK] hitFromBelow called - type: \(blockType), content: \(content), isEmpty: \(isEmpty), isAnimating: \(isAnimating)")
+        guard !isAnimating else {
+            print("[BLOCK] Skipping - already animating")
+            return
+        }
 
         switch blockType {
         case .brick:
+            print("[BLOCK] Brick block hit")
             if byBigPlayer && content == .nothing {
                 breakBlock()
             } else {
@@ -131,13 +175,16 @@ class BlockNode: SKSpriteNode {
             }
 
         case .question:
+            print("[BLOCK] Question block hit, isEmpty: \(isEmpty)")
             if !isEmpty {
+                print("[BLOCK] Releasing content: \(content)")
                 bumpBlock()
                 releaseContent()
                 becomeEmpty()
             }
 
         default:
+            print("[BLOCK] Other block type, ignoring")
             break
         }
     }
@@ -160,9 +207,11 @@ class BlockNode: SKSpriteNode {
 
     private func releaseContent() {
         let spawnPosition = CGPoint(x: position.x, y: position.y + size.height)
+        print("[BLOCK] releaseContent called, content: \(content), delegate: \(blockDelegate != nil ? "SET" : "NIL")")
 
         switch content {
         case .coin:
+            print("[BLOCK] Spawning coin at \(spawnPosition)")
             blockDelegate?.blockDidSpawnCoin(self, at: spawnPosition)
             content = .nothing
 
@@ -190,6 +239,14 @@ class BlockNode: SKSpriteNode {
 
         case .oneUp:
             blockDelegate?.blockDidSpawnItem(self, item: .oneUp, at: spawnPosition)
+            content = .nothing
+
+        case .dollarBurst(let count):
+            blockDelegate?.blockDidSpawnDollarBurst(self, count: count, at: spawnPosition)
+            content = .nothing
+
+        case .enemySurprise:
+            blockDelegate?.blockDidSpawnEnemy(self, at: spawnPosition)
             content = .nothing
 
         case .nothing:
@@ -229,6 +286,10 @@ class BlockNode: SKSpriteNode {
     private func becomeEmpty() {
         isEmpty = true
         color = SKColor(red: 0.4, green: 0.35, blue: 0.3, alpha: 1.0)
+
+        // Remove question mark visual
+        childNode(withName: "questionMark")?.removeFromParent()
+        children.filter { $0 is SKShapeNode }.forEach { $0.removeFromParent() }
     }
 }
 

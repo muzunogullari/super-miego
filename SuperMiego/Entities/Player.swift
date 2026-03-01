@@ -53,6 +53,8 @@ class Player: SKSpriteNode {
     private var invincibilityTimer: TimeInterval = 0
     private var blinkTimer: TimeInterval = 0
     private var previousState: PlayerState = .small
+    private var freezeTimer: TimeInterval = 0
+    private var isFrozen: Bool = false
 
     // MARK: - Textures & Animation
     private var idleTexture: SKTexture!
@@ -143,11 +145,13 @@ class Player: SKSpriteNode {
     }
 
     private func updateAnimation(moveDirection: CGFloat) {
-        let spriteSize = CGSize(width: 56, height: 64)
+        // Size depends on player state - big is 1.5x proportional scale
+        let isBigPlayer = playerState == .big || playerState == .fire
+        let spriteSize = isBigPlayer ? CGSize(width: 84, height: 96) : CGSize(width: 56, height: 64)
 
         if playerState == .dead {
             texture = deadTexture
-            size = spriteSize
+            size = CGSize(width: 56, height: 64)  // Dead is always small sprite
             removeAction(forKey: "runAnimation")
             isRunAnimating = false
             return
@@ -210,7 +214,9 @@ class Player: SKSpriteNode {
     private func updateMovement(direction: CGFloat) {
         guard let body = physicsBody else { return }
 
-        let speed = isOnGround ? moveSpeed : airMoveSpeed
+        // When frozen, movement is heavily reduced
+        let freezeMultiplier: CGFloat = isFrozen ? 0.3 : 1.0
+        let speed = (isOnGround ? moveSpeed : airMoveSpeed) * freezeMultiplier
 
         if direction != 0 {
             body.velocity.dx = direction * speed
@@ -279,6 +285,15 @@ class Player: SKSpriteNode {
             if invincibilityTimer <= 0 {
                 alpha = 1.0
                 playerState = previousState
+            }
+        }
+
+        // Freeze effect (from snowflake projectile)
+        if freezeTimer > 0 {
+            freezeTimer -= deltaTime
+            if freezeTimer <= 0 {
+                isFrozen = false
+                colorBlendFactor = 0
             }
         }
     }
@@ -378,16 +393,23 @@ class Player: SKSpriteNode {
 
     private func grow() {
         playerState = .big
-        let newSize = CGSize(width: 56, height: 112)  // 2x scale big
+        let oldSize = size
+        let newSize = CGSize(width: 84, height: 96)  // 1.5x proportional scale
 
-        // Move up so we don't clip into ground
-        position.y += (newSize.height - size.height) / 2
+        // Move up so feet stay on ground (adjust by height difference)
+        let heightDiff = newSize.height - oldSize.height
+        position.y += heightDiff / 2
 
         size = newSize
 
         // Update physics body
         physicsBody = nil
         setupPhysics()
+
+        // Reset ground contact since physics body changed
+        groundContactCount = 0
+        isOnGround = false
+        print("[PLAYER] grow() complete - new size: \(size), isOnGround reset to false")
     }
 
     private func shrink() {
@@ -458,6 +480,17 @@ class Player: SKSpriteNode {
         physicsBody?.velocity.dy = 350
     }
 
+    // MARK: - Freeze (from snowflake projectile)
+
+    func freeze() {
+        guard playerState != .invincible && playerState != .dead else { return }
+        isFrozen = true
+        freezeTimer = 2.0  // Frozen for 2 seconds
+        // Visual feedback - tint blue
+        color = SKColor(red: 0.5, green: 0.7, blue: 1.0, alpha: 1.0)
+        colorBlendFactor = 0.5
+    }
+
     // MARK: - Reset
 
     func reset(at newPosition: CGPoint) {
@@ -476,8 +509,11 @@ class Player: SKSpriteNode {
         groundContactCount = 0
         invulnerabilityTimer = 0
         invincibilityTimer = 0
+        freezeTimer = 0
+        isFrozen = false
         isHidden = false
         alpha = 1.0
+        colorBlendFactor = 0
 
         size = CGSize(width: 56, height: 64)  // 2x scale
         texture = idleTexture

@@ -26,6 +26,23 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
             if isPlayerLandingOn(contact: contact) {
                 player?.contactWithGround()
             }
+
+            // Check if player is hitting block from below
+            if collision == PhysicsCategory.player | PhysicsCategory.block {
+                print("[COLLISION] Player + Block contact detected")
+                if let block = (nodeA as? BlockNode) ?? (nodeB as? BlockNode) {
+                    print("[COLLISION] Block found: \(block.blockType), isEmpty: \(block.isEmpty)")
+                    if isPlayerHittingFromBelow(contact: contact) {
+                        print("[COLLISION] Hit from below! Calling hitFromBelow")
+                        let isBig = player?.playerState == .big || player?.playerState == .fire
+                        block.hitFromBelow(byBigPlayer: isBig)
+                    } else {
+                        print("[COLLISION] NOT hit from below - normalY and velocity check failed")
+                    }
+                } else {
+                    print("[COLLISION] Block NOT found - nodeA: \(type(of: nodeA)), nodeB: \(type(of: nodeB))")
+                }
+            }
         }
 
         // Player + Enemy
@@ -58,6 +75,11 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
             handleFireballEnemyContact(nodeA: nodeA, nodeB: nodeB)
         }
 
+        // Player + Enemy Projectile (snowflake/fireball from turtles)
+        if collision == PhysicsCategory.player | PhysicsCategory.enemyProjectile {
+            handlePlayerProjectileContact(nodeA: nodeA, nodeB: nodeB)
+        }
+
         // Fireball + Ground/Block (bounce or destroy)
         if collision == PhysicsCategory.fireball | PhysicsCategory.ground ||
            collision == PhysicsCategory.fireball | PhysicsCategory.block {
@@ -69,13 +91,23 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
             }
         }
 
+        // Enemy Projectile + Ground/Block (ice stops, fireball dies)
+        if collision == PhysicsCategory.enemyProjectile | PhysicsCategory.ground ||
+           collision == PhysicsCategory.enemyProjectile | PhysicsCategory.block {
+            if let projectile = (nodeA as? Projectile) ?? (nodeB as? Projectile) {
+                projectile.hitGround()
+            }
+        }
+
         // Enemy + Ground/Block (for turning)
         if collision == PhysicsCategory.enemy | PhysicsCategory.ground ||
            collision == PhysicsCategory.enemy | PhysicsCategory.block {
-            if let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) {
-                // Check if hitting wall
-                if abs(contact.contactNormal.dx) > 0.5 {
+            // Check if hitting wall
+            if abs(contact.contactNormal.dx) > 0.5 {
+                if let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) {
                     enemy.hitWall()
+                } else if let turtle = (nodeA as? TurtleEnemy) ?? (nodeB as? TurtleEnemy) {
+                    turtle.hitWall()
                 }
             }
         }
@@ -119,12 +151,33 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
         return normalY > 0.5 && playerVelocity <= 10
     }
 
+    private func isPlayerHittingFromBelow(contact: SKPhysicsContact) -> Bool {
+        // Calculate contact normal relative to player
+        let normalY = contact.bodyA.categoryBitMask == PhysicsCategory.player ? -contact.contactNormal.dy : contact.contactNormal.dy
+
+        // Normal pointing down (< -0.5) means block is above player = hit from below
+        return normalY < -0.5
+    }
+
     // MARK: - Player + Enemy
 
     private func handlePlayerEnemyContact(_ contact: SKPhysicsContact, nodeA: SKNode?, nodeB: SKNode?) {
-        guard let player = player,
-              let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) else { return }
+        guard let player = player else { return }
 
+        // Check for regular Enemy
+        if let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) {
+            handleRegularEnemyContact(player: player, enemy: enemy)
+            return
+        }
+
+        // Check for TurtleEnemy
+        if let turtle = (nodeA as? TurtleEnemy) ?? (nodeB as? TurtleEnemy) {
+            handleTurtleEnemyContact(player: player, turtle: turtle)
+            return
+        }
+    }
+
+    private func handleRegularEnemyContact(player: Player, enemy: Enemy) {
         guard !enemy.isDead else { return }
 
         // Check if player is invincible
@@ -153,6 +206,41 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
                 delegate?.collisionHandlerDidStompEnemy(points: points, at: enemy.position)
             }
         } else if enemy.canDamagePlayer {
+            // Player takes damage
+            player.takeDamage()
+            if player.playerState == .dead {
+                delegate?.collisionHandlerPlayerDidDie()
+            }
+        }
+    }
+
+    private func handleTurtleEnemyContact(player: Player, turtle: TurtleEnemy) {
+        guard !turtle.isDead else { return }
+
+        // Check if player is invincible
+        if player.playerState == .invincible {
+            turtle.die()
+            delegate?.collisionHandlerDidKillEnemy(at: turtle.position)
+            return
+        }
+
+        // Determine if stomp
+        let playerBottom = player.position.y - player.size.height / 2
+        let playerVelocity = player.physicsBody?.velocity.dy ?? 0
+
+        let isAbove = playerBottom > turtle.position.y - 5
+        let isMovingDown = playerVelocity < 50
+
+        if isAbove && isMovingDown {
+            // Stomp!
+            turtle.stomp()
+            player.bounce()
+
+            if let gameState = gameState {
+                let points = gameState.addStompScore(at: CACurrentMediaTime())
+                delegate?.collisionHandlerDidStompEnemy(points: points, at: turtle.position)
+            }
+        } else {
             // Player takes damage
             player.takeDamage()
             if player.playerState == .dead {
@@ -206,17 +294,55 @@ class CollisionHandler: NSObject, SKPhysicsContactDelegate {
     // MARK: - Fireball + Enemy
 
     private func handleFireballEnemyContact(nodeA: SKNode?, nodeB: SKNode?) {
-        guard let fireball = (nodeA as? Fireball) ?? (nodeB as? Fireball),
-              let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) else { return }
+        guard let fireball = (nodeA as? Fireball) ?? (nodeB as? Fireball) else { return }
 
-        guard !enemy.isDead else { return }
+        // Handle regular Enemy
+        if let enemy = (nodeA as? Enemy) ?? (nodeB as? Enemy) {
+            guard !enemy.isDead else { return }
 
-        enemy.hitByFireball()
-        fireball.hitEnemy()
+            enemy.hitByFireball()
+            fireball.hitEnemy()
 
-        if let gameState = gameState {
-            _ = gameState.addStompScore(at: CACurrentMediaTime())
+            if let gameState = gameState {
+                _ = gameState.addStompScore(at: CACurrentMediaTime())
+            }
+            delegate?.collisionHandlerDidKillEnemy(at: enemy.position)
+            return
         }
-        delegate?.collisionHandlerDidKillEnemy(at: enemy.position)
+
+        // Handle TurtleEnemy
+        if let turtle = (nodeA as? TurtleEnemy) ?? (nodeB as? TurtleEnemy) {
+            guard !turtle.isDead else { return }
+
+            turtle.die()
+            fireball.hitEnemy()
+
+            if let gameState = gameState {
+                _ = gameState.addStompScore(at: CACurrentMediaTime())
+            }
+            delegate?.collisionHandlerDidKillEnemy(at: turtle.position)
+        }
+    }
+
+    // MARK: - Player + Enemy Projectile
+
+    private func handlePlayerProjectileContact(nodeA: SKNode?, nodeB: SKNode?) {
+        guard let player = player,
+              let projectile = (nodeA as? Projectile) ?? (nodeB as? Projectile) else { return }
+
+        // Remove projectile
+        projectile.removeFromParent()
+
+        switch projectile.projectileType {
+        case .snowflake:
+            // Freeze player temporarily (slow down)
+            player.freeze()
+        case .fireball:
+            // Kill player
+            player.takeDamage()
+            if player.playerState == .dead {
+                delegate?.collisionHandlerPlayerDidDie()
+            }
+        }
     }
 }

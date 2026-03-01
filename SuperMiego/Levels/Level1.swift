@@ -1,41 +1,46 @@
 import Foundation
 
 struct Level1 {
-    // Level dimensions: 100 tiles wide x 14 tiles tall
-    // Each row MUST be exactly 100 characters
-
-    static let tiles: [[Character]] = [
-        // Row 0 (top - sky)
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 1
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 2
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 3 - high floating blocks
-        Array("-------------------?--------B?B?B------------------------------------------------------------------"),
-        // Row 4
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 5 - mid blocks with power-ups
-        Array("-----------?-------------------------------------------M------------------------F-------------------"),
-        // Row 6
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 7 - platforms
-        Array("--------------------------------------=====------------------------=====-----------------------------"),
-        // Row 8
-        Array("----------------------------------------------------------------------------------------------------"),
-        // Row 9 - pipe tops
-        Array("------------------------------[]---------------------[]----------------------[]------------------>--"),
-        // Row 10 - player start + pipe bodies
-        Array("----@-------------------------P|p--------------------P|p---------------------P|p--------------------"),
-        // Row 11 - enemies + pipe bodies
-        Array("--------------g-------g-------P||p---------g----g----P||p------g--------g---P||p--------------------"),
-        // Row 12 - ground with water gaps
-        Array("GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGWWWWGGGGGGGGGGGGGGGGGGGGWWWWWGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"),
-        // Row 13 - solid ground below
-        Array("####################################WWWW########################WWWWW###############################"),
-    ]
+    static var tiles: [[Character]] {
+        let generator = LevelGenerator()
+        return generator.generate(difficulty: 1)
+    }
 
     static func getData() -> LevelData {
+        let loader = LevelLoader()
+        return loader.loadLevel(from: tiles)
+    }
+}
+
+struct Level2 {
+    static var tiles: [[Character]] {
+        let generator = LevelGenerator()
+        return generator.generate(difficulty: 2)
+    }
+
+    static func getData() -> LevelData {
+        let loader = LevelLoader()
+        return loader.loadLevel(from: tiles)
+    }
+}
+
+struct Level3 {
+    static var tiles: [[Character]] {
+        let generator = LevelGenerator()
+        return generator.generate(difficulty: 3)
+    }
+
+    static func getData() -> LevelData {
+        let loader = LevelLoader()
+        return loader.loadLevel(from: tiles)
+    }
+}
+
+// Dynamic level generator for any level number
+struct DynamicLevel {
+    static func getData(level: Int) -> LevelData {
+        let generator = LevelGenerator()
+        let tiles = generator.generate(difficulty: level)
         let loader = LevelLoader()
         return loader.loadLevel(from: tiles)
     }
