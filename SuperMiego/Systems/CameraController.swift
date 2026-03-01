@@ -44,8 +44,8 @@ class CameraController {
         let smoothingY: CGFloat = 0.2  // Fast Y tracking
         var newY = camera.position.y + (targetY - camera.position.y) * smoothingY
 
-        // Clamp Y - allow camera to go lower but not too far
-        let minY = viewportSize.height * 0.4  // Allow camera to go lower
+        // Clamp Y so the viewport bottom never goes below ground level (y=0)
+        let minY = viewportSize.height / 2
         let maxY = levelBounds.height
         newY = max(minY, min(maxY, newY))
 
