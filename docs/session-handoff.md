@@ -1,6 +1,6 @@
 # Session Handoff
 
-Last updated: Feb 28, 2026. This document captures the current state of the project for the next agent picking up work.
+Last updated: Mar 1, 2026. This document captures the current state of the project for the next agent picking up work.
 
 ## Recent Commit History
 
@@ -44,6 +44,14 @@ c53dc68 Regenerate all player sprites from unified sheet for consistent art styl
 ### Documentation
 - Created `docs/` folder with 5 documents (architecture, physics, level-design, game-constants, sprite-pipeline).
 
+## Post-Handoff Gameplay Fixes
+
+- **Jump limit**: Extra air jumps are now configurable via `GameConstants.maxAirJumps` (default `1`, which gives a double-jump total).
+- **Grounding/pipe stability**: Pipe side contacts no longer incorrectly clear grounded state. `CollisionHandler` tracks true support contacts, and `Player` supplements that with contact-body checks plus foot probes.
+- **Platforms**: One-way platform collisions are now wired into the player's collision/contact handling.
+- **Timer expiry**: `GameStateManager` now triggers player death when time reaches zero.
+- **Player hitbox**: The small-form player body is beveled at the feet, trimmed at the top, and intentionally narrower so the sprite can fit 2-tile tunnels and match the visible art more closely.
+
 ## Current File Inventory
 
 ### Swift Files (20 total)
@@ -54,14 +62,14 @@ c53dc68 Regenerate all player sprites from unified sheet for consistent art styl
 | `Scenes/MenuScene.swift` | Title screen |
 | `Entities/Player.swift` | Player state machine, movement, animation, power-ups |
 | `Entities/Enemy.swift` | Goomba/Koopa/Piranha (goomba has sprite textures) |
-| `Entities/TurtleEnemy.swift` | Fire turtle enemy type (added by remote) |
-| `Nodes/BlockNode.swift` | Ground, brick (crate texture), question, platform, PipeNode |
+| `Entities/TurtleEnemy.swift` | Ice/fire turtle enemy type |
+| `Nodes/BlockNode.swift` | Ground, brick (crate texture), question, platform |
 | `Nodes/ItemNode.swift` | Mushroom, fire flower, star, 1-up, Fireball |
 | `Systems/CameraController.swift` | Parallax-aware camera with Y clamp |
 | `Systems/CollisionHandler.swift` | Physics contact routing |
 | `Systems/GameStateManager.swift` | Score, coins, lives, timer |
 | `Systems/InputManager.swift` | **UNUSED** - GameScene has its own drag+tap input |
-| `Levels/Level1.swift` | Level 1 layout |
+| `Levels/Level1.swift` | Level wrappers + `LevelManager` entry points |
 | `Levels/LevelLoader.swift` | Parses character grids into nodes |
 | `Levels/LevelGenerator.swift` | Procedural level generation (added by remote) |
 | `Config/GameConstants.swift` | All tunable values + Debug flags |
@@ -105,13 +113,13 @@ These entities are still rendered as flat colored rectangles:
 
 ## Known Issues & Quirks
 
-1. **Player physics body has beveled bottom corners** (4px) to prevent tile-seam snagging. Do NOT revert to a simple rectangle.
+1. **Player physics body is intentionally not a full rectangle.** It keeps 4px beveled bottom corners to prevent tile-seam snagging, plus a trimmed top and narrower width for tunnel clearance and better visual fit. Do NOT revert to a simple rectangle.
 2. **GameConstants vs actual code**: Enemy sizes in `Enemy.swift` (28×28 goomba) differ from `GameConstants` (32×32). The code values are what's actually used.
 3. **InputManager.swift is completely unused.** GameScene implements its own drag+tap system.
-4. **`.pip_tmp/` folder**: Contains locally-installed Pillow for image processing. Gitignored. Reinstall with `pip3 install --target .pip_tmp Pillow` if needed.
+4. **`.pip_tmp/` folder**: Contains locally-installed Pillow for image processing. Keep it uncommitted; if it appears as untracked, exclude it before committing. Reinstall with `pip3 install --target .pip_tmp Pillow` if needed.
 5. **Cloud green fringe**: The cloud chromakey uses an aggressive `is_greenish()` check (g > 150 and g > r*1.3 and g > b*1.3). Standard `is_green()` leaves anti-aliasing fringe on white/light-colored sprites.
 6. **Background music only plays in GameScene**, not MenuScene. It doesn't pause/resume with game pause (the scene `isPaused` pauses SpriteKit actions but not AVAudioPlayer).
-7. **Levels**: The game now has 5 levels with progression (added by remote commit `a07424c`). Level data comes from `LevelGenerator.swift`.
+7. **Levels**: The game has 5 levels with progression. `LevelManager` currently routes all 5 through `LevelGenerator.swift`.
 
 ## User Preferences
 

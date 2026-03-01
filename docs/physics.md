@@ -19,6 +19,7 @@ Defined in `SuperMiego/Config/PhysicsCategories.swift`:
 | `deathZone` | 9 | 512 | Pits, water |
 | `platform` | 10 | 1024 | One-way platforms |
 | `shell` | 11 | 2048 | Kicked Koopa shells |
+| `enemyProjectile` | 12 | 4096 | Snowflake/fireball projectiles from turtle enemies |
 
 ## Collision vs Contact
 
@@ -26,7 +27,7 @@ SpriteKit distinguishes between:
 - **collisionBitMask**: Physical collisions (things bounce off each other). Handled by the physics engine automatically.
 - **contactTestBitMask**: Contact notifications (triggers `didBegin(contact:)`). Handled in code by `CollisionHandler`.
 
-Example: The player *collides* with ground/blocks (can't pass through) and *contacts* enemies/items/coins (triggers game logic).
+Example: The player *collides* with ground/blocks/platforms (can't pass through) and *contacts* enemies/items/coins (triggers game logic).
 
 ## Collision Handler
 
@@ -45,18 +46,17 @@ Key collision interactions:
 | Player | Coin | Collect coin, add score |
 | Player | Flagpole | Level complete |
 | Player | DeathZone | Player dies |
-| Player | Ground | Ground contact tracking (for jump state) |
+| Player | Ground/Block/Platform | Ground/support tracking (for jump state) |
 | Fireball | Enemy | Kill enemy |
 | Enemy | Ground/Block | Reverse walk direction (via `hitWall()`) |
 
 ## Ground Detection
 
-The player tracks ground contact via a counter (`groundContactCount`):
-- `contactWithGround()` increments the counter
-- `endContactWithGround()` decrements it
-- Player is considered grounded when `groundContactCount > 0 && velocity.dy <= 1`
-
-This counter approach handles the case where the player stands on multiple ground tiles simultaneously.
+Grounding uses multiple signals:
+- `CollisionHandler` tracks only true support contacts in an internal set, so brushing a pipe wall does not decrement the player's support count.
+- `contactWithGround()` / `endContactWithGround()` still maintain `groundContactCount` for confirmed landing contacts.
+- `Player.updateGroundState()` also checks current contact bodies plus three probe points just below the feet, which makes pipe tops and tile-edge transitions more stable.
+- The player is treated as grounded while supported unless vertical rise speed exceeds roughly 25% of `lowJumpForce`, which filters out small physics jitter while walking.
 
 Coyote time (0.1s) gives a brief grace period after leaving the ground where the player can still jump.
 
@@ -81,7 +81,7 @@ The overlays are added as child nodes named `"collisionDebug"` with `zPosition =
 
 ## Player Physics Body Shape
 
-The player uses a polygon body with beveled bottom corners, NOT a simple rectangle:
+The player uses a polygon body with beveled bottom corners, a trimmed top, and a narrower width, NOT a full rectangle:
 
 ```
     ┌──────────┐
@@ -93,4 +93,4 @@ The player uses a polygon body with beveled bottom corners, NOT a simple rectang
       4px bevel
 ```
 
-This prevents the player from catching on seams between adjacent ground tiles — a well-known SpriteKit bug where rectangle bodies snag on the invisible boundary between two perfectly aligned tiles. Do not revert this to `SKPhysicsBody(rectangleOf:)`.
+This prevents the player from catching on seams between adjacent ground tiles, keeps the hitbox closer to the visible sprite, and allows clean travel through 2-tile tunnels. Do not revert this to `SKPhysicsBody(rectangleOf:)`.

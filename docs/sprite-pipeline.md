@@ -221,7 +221,7 @@ sys.path.insert(0, '.pip_tmp')
 from PIL import Image
 ```
 
-The `.pip_tmp` folder is gitignored and should not be committed.
+The `.pip_tmp` folder is a local scratch install and should not be committed. If it appears as untracked in your worktree, exclude it before committing.
 
 ## Common Pitfalls
 

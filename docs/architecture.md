@@ -21,13 +21,13 @@ SuperMiego/
 ├── Entities/
 │   ├── Player.swift                 ← Player state machine, movement, animation, power-ups
 │   ├── Enemy.swift                  ← Goomba/Koopa/Piranha behavior, stomp/shell mechanics
-│   └── TurtleEnemy.swift            ← Fire turtle enemy variant
+│   └── TurtleEnemy.swift            ← Ice/fire turtle enemy variants
 ├── Levels/
-│   ├── Level1.swift                 ← Level 1 layout as a 2D character array
+│   ├── Level1.swift                 ← Level wrappers + LevelManager entry points (legacy name)
 │   ├── LevelLoader.swift            ← Parses level data into SpriteKit nodes
-│   └── LevelGenerator.swift         ← Procedural level generation for levels 2-5
+│   └── LevelGenerator.swift         ← Procedural level generation for all 5 levels
 ├── Nodes/
-│   ├── BlockNode.swift              ← Ground, brick (crate texture), question blocks, pipes, platforms
+│   ├── BlockNode.swift              ← Ground, brick (crate texture), question blocks, platforms
 │   └── ItemNode.swift               ← Mushroom, fire flower, star, 1-up, fireball
 ├── Scenes/
 │   ├── MenuScene.swift              ← Title screen with rain/mist effects
@@ -51,7 +51,7 @@ SuperMiegoApp (SwiftUI)
        └─ START GAME transitions to GameScene
             ├─ didMove(to:)
             │   ├─ Creates worldNode (container for all game objects)
-            │   ├─ loadLevel() — Level1 or LevelGenerator for levels 2-5
+            │   ├─ loadLevel() — LevelManager/LevelGenerator for levels 1-5
             │   ├─ Creates Player, adds to worldNode
             │   ├─ Sets up CameraController, CollisionHandler, GameStateManager
             │   ├─ createBackground() — 4-layer parallax (sky, mountains, trees, clouds)
@@ -61,7 +61,7 @@ SuperMiegoApp (SwiftUI)
                 ├─ GameStateManager.update (timer countdown)
                 ├─ Player.update (movement, jump, animation)
                 ├─ Enemy.update (walk patrol)
-                ├─ TurtleEnemy.update (fire turtle patrol)
+                ├─ TurtleEnemy.update (patrol + projectile firing)
                 ├─ ItemNode.update (mushroom/star movement)
                 ├─ Fireball.update
                 ├─ CameraController.update (follow player)
@@ -74,7 +74,7 @@ SuperMiegoApp (SwiftUI)
 ### Input (GameScene)
 Touch-based, implemented directly in GameScene (not via InputManager):
 - **Drag horizontally**: Move left/right. Velocity scales with drag distance (dead zone: 20pt, max: 120pt).
-- **Tap**: Jump. Ground tap = low jump, air tap = high jump (up to 3 air jumps).
+- **Tap**: Jump. Ground tap = low jump, air tap = high jump (`GameConstants.maxAirJumps`, default: 1 extra jump = double-jump total).
 - The HUD pause button intercepts touches before game input.
 
 ### Physics (CollisionHandler)
@@ -96,7 +96,7 @@ All layers are positioned so their base aligns with the top of ground tiles (`gr
 Background music uses `AVAudioPlayer` (not `SKAudioNode`) loaded from `background_audio.m4a`. Loops infinitely at 40% volume. Note: `AVAudioPlayer` is NOT paused by SpriteKit's `isPaused` — if you implement pause/resume for audio, you need to handle it manually.
 
 ### Game State (GameStateManager)
-Tracks score, coins, lives, time remaining. Handles coin→life conversion (every 100 coins). Manages level completion and game over conditions. Delegates UI updates to HUD.
+Tracks score, coins, lives, time remaining. Handles coin→life conversion (every 100 coins). Timer expiry now triggers player death through a delegate callback. Delegates UI updates to HUD.
 
 ## Delegation Pattern
 
@@ -114,10 +114,10 @@ The codebase uses delegates extensively to decouple systems:
 
 - **InputManager is unused.** GameScene has its own drag+tap input system. InputManager exists but is not wired in.
 - **AssetNames is partially used.** Player and Enemy load textures by hardcoded string names, not via AssetNames constants.
-- **Levels are Swift code, not data files.** Level1.swift defines the layout as a `[[Character]]` array. Levels 2-5 use `LevelGenerator`.
+- **Levels are Swift code, not data files.** `LevelManager` currently generates all 5 levels via `LevelGenerator`; `Level1.swift` now acts as a wrapper/entry-point file rather than a hand-authored layout.
 - **worldNode vs camera vs background.** Game objects are children of `worldNode`. HUD elements are children of `cameraNode`. Parallax background layers are children of the scene itself (not worldNode, not camera). Don't mix these up.
-- **Player physics body uses beveled corners.** The bottom corners are beveled (4px) to prevent getting stuck on tile seams between adjacent ground blocks. This is a known SpriteKit issue. Do not change the physics body back to a simple rectangle.
+- **Player physics body is intentionally not a full rectangle.** It keeps beveled bottom corners (4px) to prevent tile-seam snagging, plus a trimmed top and narrower width so the sprite can fit 2-tile tunnels and match the visible art more closely. Do not change it back to a full rectangle.
 - **GameConstants vs actual code.** Enemy sizes in `Enemy.swift` (28×28 goomba) differ from `GameConstants` (32×32). The code values are what's actually used. Check the entity source file for ground truth.
 - **Background music doesn't pause.** `AVAudioPlayer` is independent of SpriteKit's `isPaused`. If pause/resume for audio is needed, it must be handled manually.
-- **`.pip_tmp/` folder.** Contains locally-installed Pillow for image processing scripts. Gitignored. Reinstall with `pip3 install --target .pip_tmp Pillow` if needed for sprite work.
+- **`.pip_tmp/` folder.** Contains a local Pillow install for image processing scripts. It should stay uncommitted; if it appears as untracked in your worktree, exclude it before committing. Reinstall with `pip3 install --target .pip_tmp Pillow` if needed for sprite work.
 - **5 levels with progression.** The game has 5 levels. Level completion triggers a transition to the next level. After level 5, the game loops or ends (check `GameScene` for current behavior).

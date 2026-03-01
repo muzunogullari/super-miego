@@ -1,6 +1,6 @@
 # Game Constants Reference
 
-All tunable values live in `SuperMiego/Config/GameConstants.swift`. This is the single source of truth for game feel, physics, and balance. Modify values here rather than hardcoding numbers in individual files.
+Most tunable values live in `SuperMiego/Config/GameConstants.swift`. It is the primary balancing file, but some movement/collision tuning still lives in `Player.swift` and `GameScene.swift`.
 
 ## Screen
 
@@ -19,12 +19,27 @@ All tunable values live in `SuperMiego/Config/GameConstants.swift`. This is the 
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `walkSpeed` | 200 | Horizontal movement speed |
-| `runSpeed` | 350 | (Defined but currently unused in Player.swift) |
-| `lowJumpForce` | 609 | Upward impulse for ground tap jump |
-| `highJumpForce` | 861 | Upward impulse for air tap jump |
+| `playerWalkSpeed` | 200 | Base horizontal movement constant |
+| `playerRunSpeed` | 350 | Defined but currently unused |
+| `playerAcceleration` | 800 | Ground acceleration tuning constant |
+| `playerDeceleration` | 1000 | Ground deceleration tuning constant |
+| `playerAirAcceleration` | 400 | Air acceleration tuning constant |
 
-The player currently has up to 3 air jumps (hardcoded in `Player.swift`, not in GameConstants).
+Note: `Player.swift` still uses some local movement values instead of these constants, so check the entity file when tuning actual runtime feel.
+
+## Player Jump
+
+| Constant | Value | Notes |
+|----------|-------|-------|
+| `playerJumpImpulse` | 420 | Legacy jump impulse constant |
+| `playerJumpHoldForce` | 600 | Legacy hold-force constant |
+| `playerMaxJumpTime` | 0.25 | Legacy max hold time |
+| `playerMinJumpTime` | 0.1 | Legacy min hold time |
+| `lowJumpForce` | 609 | Actual ground tap jump impulse |
+| `highJumpForce` | 861 | Actual air jump impulse |
+| `maxAirJumps` | 1 | Extra air jumps after leaving ground (1 = double-jump total) |
+
+The current tap-jump path uses `lowJumpForce` / `highJumpForce`. The older hold-to-jump constants remain defined but are not the active jump path.
 
 ## Physics
 
@@ -32,6 +47,8 @@ The player currently has up to 3 air jumps (hardcoded in `Player.swift`, not in 
 |----------|-------|-------|
 | `gravity` | -1400 | World gravity (negative = downward) |
 | `terminalVelocity` | -800 | Max fall speed |
+
+Note: `GameScene` currently sets `physicsWorld.gravity` directly to `-12`, so the runtime gravity does not match `GameConstants.gravity`.
 
 ## Enemies
 
@@ -48,10 +65,11 @@ Note: Enemy.swift currently uses its own hardcoded sizes (28×28 for goomba, 28�
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `mushroomSpeed` | 80 | Mushroom horizontal movement |
-| `starBounceSpeed` | 200 | Star vertical bounce impulse |
+| `mushroomMoveSpeed` | 80 | Mushroom horizontal movement |
+| `starBounceSpeed` | 100 | Star horizontal movement |
+| `starBounceImpulse` | 300 | Star bounce impulse |
 | `fireballSpeed` | 400 | Fireball horizontal speed |
-| `fireballBounce` | 200 | Fireball bounce impulse |
+| `fireballBounceImpulse` | 200 | Fireball bounce impulse |
 | `fireballSize` | 12×12 | Fireball display size |
 | `maxFireballs` | 2 | Max simultaneous fireballs |
 
@@ -59,8 +77,8 @@ Note: Enemy.swift currently uses its own hardcoded sizes (28×28 for goomba, 28�
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `leadOffset` | 50 | Camera leads ahead of player |
-| `smoothing` | 0.08 | Camera follow smoothing (0–1, lower = smoother) |
+| `cameraLeadOffset` | 50 | Camera leads ahead of player |
+| `cameraSmoothing` | 0.08 | Camera follow smoothing (0–1, lower = smoother) |
 
 ## Scoring
 
@@ -78,15 +96,18 @@ Note: Enemy.swift currently uses its own hardcoded sizes (28×28 for goomba, 28�
 | `startingLives` | 3 | Lives at game start |
 | `coinsForLife` | 100 | Coins needed for extra life |
 | `invincibilityDuration` | 10.0 | Star power duration (seconds) |
-| `levelTime` | 300 | Level timer (seconds) |
+| `powerUpBlinkDuration` | 2.0 | Damage blink duration |
+| `levelTimeLimit` | 300 | Level timer (seconds) |
 
 ## Touch Input
 
 | Constant | Value | Notes |
 |----------|-------|-------|
 | `dragDeadZone` | 20 | Minimum drag distance before movement |
-| `maxDragDistance` | 120 | Drag distance for max speed |
-| `tapThreshold` | — | Max movement for a touch to count as tap (not drag) |
+| `dragMaxDistance` | 120 | Drag distance for max speed |
+| `tapMaxDuration` | 0.25 | Max time for a tap gesture |
+| `doubleTapWindow` | 0.30 | Defined, but double-tap input is not currently used |
+| `tapMaxMovement` | 15 | Max movement for a touch to count as tap |
 
 ## Debug
 
