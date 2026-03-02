@@ -8,12 +8,6 @@ enum PlayerState {
     case dead
 }
 
-enum JumpType {
-    case none
-    case low
-    case high
-}
-
 protocol PlayerDelegate: AnyObject {
     func playerDidDie(_ player: Player)
     func playerDidShootFireball(_ player: Player, at position: CGPoint, direction: CGFloat)
@@ -31,19 +25,13 @@ class Player: SKSpriteNode {
 
     // MARK: - Jump State
     private var isJumping: Bool = false
-    private var jumpHoldTime: TimeInterval = 0
-    private var canJump: Bool = true
     private var airJumpsRemaining: Int = GameConstants.maxAirJumps
     private var coyoteTime: TimeInterval = 0
     private let coyoteTimeDuration: TimeInterval = 0.1
-    private var currentJumpType: JumpType = .none
 
     // MARK: - Movement
     private let moveSpeed: CGFloat = 200
     private let airMoveSpeed: CGFloat = 220  // Higher than ground for good air control
-    private let jumpForce: CGFloat = 520
-    private let jumpHoldForce: CGFloat = 280
-    private let maxJumpHoldTime: TimeInterval = 0.2
 
     // MARK: - Ground Detection
     private var groundContactCount: Int = 0
@@ -192,7 +180,7 @@ class Player: SKSpriteNode {
         guard playerState != .dead else { return }
 
         updateGroundState(deltaTime: deltaTime)
-        updateMovement(direction: moveDirection)
+        updateMovement(direction: moveDirection, deltaTime: deltaTime)
         updateJump(deltaTime: deltaTime)
         updatePlatformCollisionMask()
         updateTimers(deltaTime: deltaTime)
@@ -286,7 +274,7 @@ class Player: SKSpriteNode {
         return false
     }
 
-    private func updateMovement(direction: CGFloat) {
+    private func updateMovement(direction: CGFloat, deltaTime: TimeInterval) {
         guard let body = physicsBody else { return }
 
         // When frozen, movement is heavily reduced
@@ -294,7 +282,17 @@ class Player: SKSpriteNode {
         let speed = (isOnGround ? moveSpeed : airMoveSpeed) * freezeMultiplier
 
         if direction != 0 {
-            body.velocity.dx = direction * speed
+            if isOnGround {
+                body.velocity.dx = direction * speed
+            } else {
+                // Air control should steer toward the target velocity, not instantly snap to it.
+                // That preserves momentum and makes mid-air landing adjustments more precise.
+                let targetVelocity = direction * speed
+                let maxDelta = GameConstants.playerAirAcceleration * freezeMultiplier * CGFloat(deltaTime)
+                let velocityDelta = targetVelocity - body.velocity.dx
+                let clampedDelta = max(-maxDelta, min(maxDelta, velocityDelta))
+                body.velocity.dx += clampedDelta
+            }
         } else {
             // Quick stop on ground, keep momentum in air
             if isOnGround {
@@ -320,9 +318,7 @@ class Player: SKSpriteNode {
                 print("[JUMP] landed - resetting jump state")
             }
             isJumping = false
-            canJump = true
             airJumpsRemaining = GameConstants.maxAirJumps
-            currentJumpType = .none
         }
     }
 
@@ -397,7 +393,7 @@ class Player: SKSpriteNode {
 
     /// Called on tap - handles both ground jump and extra air jumps.
     func tryJump() {
-        print("[JUMP] tryJump called - isOnGround=\(isOnGround) airJumpsRemaining=\(airJumpsRemaining) canJump=\(canJump) coyoteTime=\(coyoteTime)")
+        print("[JUMP] tryJump called - isOnGround=\(isOnGround) airJumpsRemaining=\(airJumpsRemaining) coyoteTime=\(coyoteTime)")
         guard playerState != .dead else {
             print("[JUMP]   -> REJECTED: player dead")
             return
@@ -407,28 +403,17 @@ class Player: SKSpriteNode {
             // Ground jump - low jump
             print("[JUMP]   -> GROUND JUMP (low)")
             isJumping = true
-            canJump = false
             airJumpsRemaining = GameConstants.maxAirJumps
             coyoteTime = 0
-            currentJumpType = .low
             physicsBody?.velocity.dy = GameConstants.lowJumpForce
         } else if airJumpsRemaining > 0 {
             // Air jump - high jump
             print("[JUMP]   -> AIR JUMP (high) - \(airJumpsRemaining) remaining")
             airJumpsRemaining -= 1
-            currentJumpType = .high
             physicsBody?.velocity.dy = GameConstants.highJumpForce
         } else {
             print("[JUMP]   -> REJECTED: not on ground and no air jumps remaining")
         }
-    }
-
-    func startLowJump() {
-        tryJump()
-    }
-
-    func startHighJump() {
-        tryJump()
     }
 
     func shoot() -> Bool {
@@ -586,11 +571,8 @@ class Player: SKSpriteNode {
         xScale = 1
         isInvulnerable = false
         isJumping = false
-        jumpHoldTime = 0
-        canJump = true
         airJumpsRemaining = GameConstants.maxAirJumps
         coyoteTime = 0
-        currentJumpType = .none
         groundContactCount = 0
         invulnerabilityTimer = 0
         invincibilityTimer = 0

@@ -31,15 +31,11 @@ Note: `Player.swift` still uses some local movement values instead of these cons
 
 | Constant | Value | Notes |
 |----------|-------|-------|
-| `playerJumpImpulse` | 420 | Legacy jump impulse constant |
-| `playerJumpHoldForce` | 600 | Legacy hold-force constant |
-| `playerMaxJumpTime` | 0.25 | Legacy max hold time |
-| `playerMinJumpTime` | 0.1 | Legacy min hold time |
 | `lowJumpForce` | 609 | Actual ground tap jump impulse |
 | `highJumpForce` | 861 | Actual air jump impulse |
 | `maxAirJumps` | 1 | Extra air jumps after leaving ground (1 = double-jump total) |
 
-The current tap-jump path uses `lowJumpForce` / `highJumpForce`. The older hold-to-jump constants remain defined but are not the active jump path.
+The current jump system is tap-based only. Old hold-to-jump constants have been removed.
 
 ## Physics
 
@@ -106,7 +102,6 @@ Note: `Enemy.swift` now uses `GameConstants.goombaSize` for goombas, so the goom
 | `dragDeadZone` | 20 | Minimum drag distance before movement |
 | `dragMaxDistance` | 120 | Drag distance for max speed |
 | `tapMaxDuration` | 0.25 | Max time for a tap gesture |
-| `doubleTapWindow` | 0.30 | Defined, but double-tap input is not currently used |
 | `tapMaxMovement` | 15 | Max movement for a touch to count as tap |
 
 ## Debug
