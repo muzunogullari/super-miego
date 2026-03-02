@@ -14,7 +14,11 @@ class GameScene: SKScene {
     // MARK: - Parallax Background
     private var skyLayer: SKNode!
     private var distantLayer: SKNode!
+    private var mistLayer: SKNode!
+    private var foothillLayer: SKNode!
+    private var valleyLayer: SKNode!
     private var nearbyLayer: SKNode!
+    private var meadowLayer: SKNode!
     private var cloudLayer: SKNode!
 
     // MARK: - Systems
@@ -171,12 +175,175 @@ class GameScene: SKScene {
             distantLayer.addChild(mountain)
         }
 
-        // -- Layer 3: Nearby evergreen trees (moderate scroll, parallaxFactor = 0.4) --
+        let debugFade: CGFloat = GameConstants.Debug.showCollisionOverlays ? 0.15 : 1.0
+        let cloudTextures: [SKTexture] = (1...3).map { i in
+            let tex = SKTexture(imageNamed: "bg_cloud_\(i)")
+            tex.filteringMode = .nearest
+            return tex
+        }
+
+        // -- Layer 3: Low mist / haze (bridges mountains into the tree line) --
+        mistLayer = SKNode()
+        mistLayer.zPosition = -70
+        addChild(mistLayer)
+
+        let mistColor = SKColor(
+            red: min(GameConstants.Colors.backgroundRed + 0.18, 1.0),
+            green: min(GameConstants.Colors.backgroundGreen + 0.16, 1.0),
+            blue: min(GameConstants.Colors.backgroundBlue + 0.14, 1.0),
+            alpha: 1.0
+        )
+
+        let mistBandWidth = levelWidth * 1.2
+
+        let mistBands: [(y: CGFloat, height: CGFloat, alpha: CGFloat)] = [
+            (0, 56, 0.16),
+            (30, 42, 0.12),
+            (58, 26, 0.08),
+        ]
+
+        for band in mistBands {
+            let mistBand = SKSpriteNode(
+                color: mistColor,
+                size: CGSize(width: mistBandWidth, height: band.height)
+            )
+            mistBand.anchorPoint = CGPoint(x: 0.5, y: 0)
+            mistBand.position = CGPoint(x: 0, y: band.y)
+            mistBand.alpha = band.alpha * debugFade
+            mistLayer.addChild(mistBand)
+        }
+
+        let mistWispCount = max(10, Int(levelWidth / 260))
+        for _ in 0..<mistWispCount {
+            let tex = cloudTextures[Int.random(in: 0..<cloudTextures.count)]
+            let wispHeight = CGFloat.random(in: 24...42)
+            let wispAspect = tex.size().width / tex.size().height
+            let wispWidth = wispHeight * wispAspect * CGFloat.random(in: 2.4...4.5)
+
+            let wisp = SKSpriteNode(
+                texture: tex,
+                size: CGSize(width: wispWidth, height: wispHeight)
+            )
+            wisp.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            wisp.position = CGPoint(
+                x: CGFloat.random(in: -levelWidth * 0.55...levelWidth * 0.55),
+                y: CGFloat.random(in: 16...88)
+            )
+            wisp.alpha = CGFloat.random(in: 0.08...0.16) * debugFade
+            mistLayer.addChild(wisp)
+        }
+
+        let lowWispCount = max(6, Int(levelWidth / 420))
+        for _ in 0..<lowWispCount {
+            let tex = cloudTextures[Int.random(in: 0..<cloudTextures.count)]
+            let wispHeight = CGFloat.random(in: 30...52)
+            let wispAspect = tex.size().width / tex.size().height
+            let wispWidth = wispHeight * wispAspect * CGFloat.random(in: 4.5...7.5)
+
+            let wisp = SKSpriteNode(
+                texture: tex,
+                size: CGSize(width: wispWidth, height: wispHeight)
+            )
+            wisp.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            wisp.position = CGPoint(
+                x: CGFloat.random(in: -levelWidth * 0.55...levelWidth * 0.55),
+                y: CGFloat.random(in: -36...18)
+            )
+            wisp.alpha = CGFloat.random(in: 0.05...0.1) * debugFade
+            mistLayer.addChild(wisp)
+        }
+
+        // -- Layer 4: Dark foothills (breaks up the flat valley floor behind the trees) --
+        foothillLayer = SKNode()
+        foothillLayer.zPosition = -65
+        addChild(foothillLayer)
+
+        let foothillColorBack = SKColor(
+            red: GameConstants.Colors.backgroundRed * 0.52,
+            green: GameConstants.Colors.backgroundGreen * 0.58,
+            blue: GameConstants.Colors.backgroundBlue * 0.7,
+            alpha: 1.0
+        )
+        let foothillColorFront = SKColor(
+            red: GameConstants.Colors.backgroundRed * 0.68,
+            green: GameConstants.Colors.backgroundGreen * 0.74,
+            blue: GameConstants.Colors.backgroundBlue * 0.86,
+            alpha: 1.0
+        )
+        let foothillSpan = levelWidth * 1.15
+        let startX = -foothillSpan / 2 - 60
+        let endX = foothillSpan / 2 + 60
+        let valleyFloor = -viewHeight * 0.26
+
+        let foothillConfigs: [(base: CGFloat, peak: CGFloat, wobble: CGFloat, color: SKColor, alpha: CGFloat)] = [
+            (28, 15, 6, foothillColorBack, 0.22),
+            (18, 10, 4, foothillColorFront, 0.14),
+        ]
+
+        for config in foothillConfigs {
+            let path = CGMutablePath()
+            path.move(to: CGPoint(x: startX, y: valleyFloor))
+            path.addLine(to: CGPoint(x: startX, y: 0))
+
+            let segments = 12
+            for i in 0...segments {
+                let progress = CGFloat(i) / CGFloat(segments)
+                let x = startX + (endX - startX) * progress
+                let ridge = config.base
+                    + sin(progress * CGFloat.pi * 2.6) * config.peak
+                    + sin(progress * CGFloat.pi * 6.2) * config.wobble
+                path.addLine(to: CGPoint(x: x, y: ridge))
+            }
+
+            path.addLine(to: CGPoint(x: endX, y: valleyFloor))
+            path.closeSubpath()
+
+            let foothill = SKShapeNode(path: path)
+            foothill.fillColor = config.color
+            foothill.strokeColor = .clear
+            foothill.alpha = config.alpha * debugFade
+            foothillLayer.addChild(foothill)
+        }
+
+        // -- Layer 5: Valley base (muted landform behind the trees so the lower matte never shows) --
+        valleyLayer = SKNode()
+        valleyLayer.zPosition = -62
+        addChild(valleyLayer)
+
+        let valleyTex = SKTexture(imageNamed: AssetNames.Background.valleyStrip)
+        valleyTex.filteringMode = .nearest
+        let valleyAspect = valleyTex.size().width / valleyTex.size().height
+        let valleyBaseHeight = viewHeight * 0.31
+        let valleySpan = levelWidth * 1.18
+        let valleyConfigs: [(height: CGFloat, y: CGFloat, alpha: CGFloat, xOffset: CGFloat)] = [
+            (valleyBaseHeight * 0.9, -valleyBaseHeight * 0.16, 0.42, -48),
+            (valleyBaseHeight * 1.02, -valleyBaseHeight * 0.2, 0.58, 26),
+        ]
+
+        for config in valleyConfigs {
+            let valleyWidth = config.height * valleyAspect
+            let valleyCount = Int(ceil((valleySpan + valleyWidth) / valleyWidth)) + 1
+            let startX = -valleySpan / 2 - valleyWidth * 0.5 + config.xOffset
+
+            for i in 0..<valleyCount {
+                let valley = SKSpriteNode(
+                    texture: valleyTex,
+                    size: CGSize(width: valleyWidth, height: config.height)
+                )
+                valley.anchorPoint = CGPoint(x: 0, y: 0)
+                valley.position = CGPoint(
+                    x: startX + CGFloat(i) * valleyWidth,
+                    y: config.y
+                )
+                valley.alpha = config.alpha * debugFade
+                valleyLayer.addChild(valley)
+            }
+        }
+
+        // -- Layer 6: Nearby evergreen trees (moderate scroll, parallaxFactor = 0.4) --
         nearbyLayer = SKNode()
         nearbyLayer.zPosition = -60
         addChild(nearbyLayer)
-
-        let debugFade: CGFloat = GameConstants.Debug.showCollisionOverlays ? 0.15 : 1.0
         let treeTextures: [SKTexture] = (1...4).map { i in
             let tex = SKTexture(imageNamed: "bg_tree_\(i)")
             tex.filteringMode = .nearest
@@ -203,16 +370,45 @@ class GameScene: SKScene {
             nearbyLayer.addChild(tree)
         }
 
-        // -- Layer 4: Clouds (float across the upper quarter of the screen) --
+        // -- Layer 7: Meadow landform (taller asset-backed field strip behind the gameplay floor) --
+        meadowLayer = SKNode()
+        meadowLayer.zPosition = -61
+        addChild(meadowLayer)
+
+        let meadowTex = SKTexture(imageNamed: AssetNames.Background.meadowStrip)
+        meadowTex.filteringMode = .nearest
+        let meadowAspect = meadowTex.size().width / meadowTex.size().height
+        let meadowBaseHeight = viewHeight * 0.35
+        let meadowSpan = levelWidth * 1.18
+        let meadowConfigs: [(height: CGFloat, y: CGFloat, alpha: CGFloat, xOffset: CGFloat)] = [
+            (meadowBaseHeight * 0.92, -meadowBaseHeight * 0.34, 0.76, -54),
+            (meadowBaseHeight * 1.06, -meadowBaseHeight * 0.42, 0.92, 20),
+        ]
+
+        for config in meadowConfigs {
+            let meadowWidth = config.height * meadowAspect
+            let meadowCount = Int(ceil((meadowSpan + meadowWidth) / meadowWidth)) + 1
+            let startX = -meadowSpan / 2 - meadowWidth * 0.5 + config.xOffset
+
+            for i in 0..<meadowCount {
+                let meadow = SKSpriteNode(
+                    texture: meadowTex,
+                    size: CGSize(width: meadowWidth, height: config.height)
+                )
+                meadow.anchorPoint = CGPoint(x: 0, y: 0)
+                meadow.position = CGPoint(
+                    x: startX + CGFloat(i) * meadowWidth,
+                    y: config.y
+                )
+                meadow.alpha = config.alpha * debugFade
+                meadowLayer.addChild(meadow)
+            }
+        }
+
+        // -- Layer 8: Clouds (float across the upper quarter of the screen) --
         cloudLayer = SKNode()
         cloudLayer.zPosition = -90
         addChild(cloudLayer)
-
-        let cloudTextures: [SKTexture] = (1...3).map { i in
-            let tex = SKTexture(imageNamed: "bg_cloud_\(i)")
-            tex.filteringMode = .nearest
-            return tex
-        }
 
         let cloudCount = 8
         for i in 0..<cloudCount {
@@ -244,16 +440,44 @@ class GameScene: SKScene {
         let camX = cam.position.x
         let camY = cam.position.y
         let halfH = size.height / 2
+        let viewportBottom = camY - halfH
 
         // Anchor backgrounds so tree bases align with the top of the ground (2 tiles = 64pt)
         let groundTop = GameConstants.tileSize * 2
-        let baseY = camY - halfH + groundTop
-        skyLayer.position = CGPoint(x: camX * 0.95, y: baseY)
-        distantLayer.position = CGPoint(x: camX * 0.75, y: baseY)
-        nearbyLayer.position = CGPoint(x: camX * 0.4, y: baseY)
+        skyLayer.position = CGPoint(
+            x: camX * 0.95,
+            y: groundTop + viewportBottom * 0.98
+        )
+        distantLayer.position = CGPoint(
+            x: camX * 0.75,
+            y: groundTop + viewportBottom * 0.85
+        )
+        mistLayer.position = CGPoint(
+            x: camX * 0.58,
+            y: groundTop + viewportBottom * 0.78
+        )
+        foothillLayer.position = CGPoint(
+            x: camX * 0.5,
+            y: groundTop + viewportBottom * 0.74
+        )
+        valleyLayer.position = CGPoint(
+            x: camX * 0.44,
+            y: groundTop + viewportBottom * 0.73
+        )
+        nearbyLayer.position = CGPoint(
+            x: camX * 0.4,
+            y: groundTop + viewportBottom * 0.7
+        )
+        meadowLayer.position = CGPoint(
+            x: camX * 0.46,
+            y: groundTop + viewportBottom * 0.72
+        )
 
-        // Clouds: fully follows camera vertically (static on screen), drifts horizontally
-        cloudLayer.position = CGPoint(x: camX * 0.95, y: camY - halfH)
+        // Clouds drift horizontally and now also parallax vertically instead of staying pinned.
+        cloudLayer.position = CGPoint(
+            x: camX * 0.95,
+            y: viewportBottom * 0.9
+        )
     }
 
     private func updateClouds(deltaTime: TimeInterval) {

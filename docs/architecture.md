@@ -59,7 +59,7 @@ SuperMiegoApp (SwiftUI)
                       │   ├─ loadLevel() — LevelManager/LevelGenerator for levels 1-5
                       │   ├─ Creates Player, adds to worldNode
                       │   ├─ Sets up CameraController, CollisionHandler, GameStateManager
-                      │   ├─ createBackground() — 4-layer parallax (sky, mountains, trees, clouds)
+                      │   ├─ createBackground() — multi-layer parallax stack (sky through trees/meadow)
                       │   ├─ Creates HUD (attached to camera, not world)
                       │   └─ playBackgroundMusic() — AVAudioPlayer, loops infinitely
                       └─ update(_:)
@@ -96,13 +96,58 @@ All collision routing goes through `CollisionHandler`, which implements `SKPhysi
 Horizontal side-scroller camera. Tracks the player with a configurable lead offset and smoothing factor. Clamped to level bounds so it doesn't scroll past the edges. The Y clamp uses `minY = viewportSize.height / 2` so the viewport bottom sits flush at world y=0 (no gap below ground).
 
 ### Parallax Background (GameScene)
-4 layers, all children of the scene (NOT worldNode). Repositioned every frame in `updateParallax()` based on camera position:
-- **skyLayer** (z: -100, parallax: 0.95): Procedural solid-fill stripes using `GameConstants.Colors`, standardized to RGB(119, 139, 170)
-- **cloudLayer** (z: -90): Floating clouds that drift rightward and wrap. Updated in `updateClouds(deltaTime:)`
-- **distantLayer** (z: -80, parallax: 0.75): Tileable mountain range
-- **nearbyLayer** (z: -60, parallax: 0.4): Randomized PNW evergreen tree silhouettes
+The scene now has a full depth stack, not the original 4-layer setup. All parallax layers are direct children of the scene (NOT `worldNode`) and are repositioned every frame in `updateParallax()` based on camera position.
 
-All layers are positioned so their base aligns with the top of ground tiles (`groundTop = tileSize * 2`).
+ASCII depth map, front to back:
+
+```text
+CAMERA SPACE (true overlays, attached to cameraNode)
+┌──────────────────────────────────────────────────────────────┐
+│ HUD, pause menu, game over overlays, level-complete overlay │
+└──────────────────────────────────────────────────────────────┘
+
+WORLD SPACE (gameplay plane, attached to worldNode)
+┌──────────────────────────────────────────────────────────────┐
+│ Player, enemies, coins, pipes, blocks, platforms, flagpole  │
+│ Ground collision tiles also live here.                      │
+│ The visible "trail" surface is part of gameplay ground,     │
+│ not a background layer.                                     │
+└──────────────────────────────────────────────────────────────┘
+
+BACKGROUND SPACE (scene children with negative zPosition)
+closest to gameplay
+  nearbyLayer   (z: -60)  trees
+  meadowLayer   (z: -61)  green meadow strip
+  valleyLayer   (z: -62)  muted valley base strip
+  foothillLayer (z: -65)  procedural dark foothill silhouettes
+  mistLayer     (z: -70)  haze + low wisps
+  distantLayer  (z: -80)  mountain range
+  cloudLayer    (z: -90)  drifting cloud sprites
+  skyLayer      (z: -100) procedural sky fill stripes
+farthest back
+
+SCENE BACKSTOP
+  backgroundColor = RGB(119, 139, 170)
+```
+
+Layer roles:
+- **skyLayer** (z: -100, parallax: x `0.95`, y `0.98`): Procedural solid-fill sky stripes using `GameConstants.Colors`.
+- **cloudLayer** (z: -90, parallax: x `0.95`, y `0.9`): Floating clouds that drift rightward and wrap. Despite feeling "in front" visually, they are still part of the background stack, not UI overlays.
+- **distantLayer** (z: -80, parallax: x `0.75`, y `0.85`): Tileable mountain range.
+- **mistLayer** (z: -70, parallax: x `0.58`, y `0.78`): Low haze bands and cloud wisps that blend mountain bases into the lower landscape.
+- **foothillLayer** (z: -65, parallax: x `0.5`, y `0.74`): Procedural cool-toned foothill silhouettes that break up the flat lower horizon.
+- **valleyLayer** (z: -62, parallax: x `0.44`, y `0.73`): Muted valley floor strip behind the trees, added specifically to prevent the lower matte from showing during high jumps.
+- **meadowLayer** (z: -61, parallax: x `0.46`, y `0.72`): Taller green meadow strip that provides the visible green field behind the gameplay ground.
+- **nearbyLayer** (z: -60, parallax: x `0.4`, y `0.7`): Randomized PNW evergreen tree silhouettes. These are depth layers, not true overlays.
+
+Important distinction:
+- The **foreground gameplay plane** is `worldNode`.
+- The **green meadow** is a background layer (`meadowLayer`).
+- The **brown hiking path / dirt ground** is gameplay ground in `worldNode`, not part of the parallax background.
+- The **true background** is the scene `backgroundColor` plus the procedural `skyLayer`.
+- The only actual overlays are camera-space UI nodes attached to `cameraNode`.
+
+All background layers are vertically anchored relative to the top of the gameplay ground (`groundTop = tileSize * 2`), then offset by each layer's own vertical parallax factor.
 
 ### Audio (GameScene)
 Background music uses `AVAudioPlayer` (not `SKAudioNode`) loaded from `background_audio.m4a`. Loops infinitely at 40% volume. Note: `AVAudioPlayer` is NOT paused by SpriteKit's `isPaused` — if you implement pause/resume for audio, you need to handle it manually.

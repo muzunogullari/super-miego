@@ -26,12 +26,18 @@ c53dc68 Regenerate all player sprites from unified sheet for consistent art styl
 - **Brick blocks**: Replaced flat brown color with a wooden crate pixel art texture (PNW rustic vibe).
 
 ### Parallax Background System
-- 4-layer parallax system in `GameScene.createBackground()` and `GameScene.updateParallax()`:
-  - **Sky** (parallax 0.95): 3-stripe procedural gradient, PNW overcast blues
-  - **Mountains** (parallax 0.75): Tileable Olympic-style pixel art mountain range with snow caps. Edge-blended programmatically for seamless tiling.
-  - **Trees** (parallax 0.4): 4 distinct PNW evergreen silhouettes (Douglas fir, cedar, spruce, sapling), randomly placed with varying sizes and opacity.
-  - **Clouds** (parallax 0.95, drifts): 3 cloud textures that float rightward and wrap around. Updated in `updateClouds(deltaTime:)`.
-- Backgrounds are anchored so tree bases align with the top of the ground tiles.
+- The old 4-layer mental model is outdated. The current background stack is:
+  - `skyLayer`: procedural sky fill
+  - `cloudLayer`: drifting cloud sprites
+  - `distantLayer`: mountain range
+  - `mistLayer`: haze / low cloud wisps
+  - `foothillLayer`: procedural dark foothills
+  - `valleyLayer`: muted valley base strip
+  - `meadowLayer`: green meadow strip
+  - `nearbyLayer`: tree silhouettes
+- Gameplay ground is separate from the background stack. The visible trail surface and dirt fill are ground tiles in `worldNode`, not parallax layers.
+- The only true overlays are camera-space UI nodes attached to `cameraNode`.
+- Backgrounds are anchored from the gameplay ground top and then shifted by each layer's own vertical parallax factor.
 
 ### Camera
 - Fixed camera Y clamp so the viewport bottom sits flush at y=0 (no gap below ground).

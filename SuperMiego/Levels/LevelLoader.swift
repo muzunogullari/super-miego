@@ -11,6 +11,15 @@ struct LevelData {
 class LevelLoader {
     private let tileSize = GameConstants.tileSize
 
+    private func isGroundTile(_ tile: Character) -> Bool {
+        tile == "#" || tile == "G"
+    }
+
+    private func isTopGroundTile(rowIndex: Int, colIndex: Int, tiles: [[Character]]) -> Bool {
+        guard rowIndex > 0 else { return true }
+        return !isGroundTile(tiles[rowIndex - 1][colIndex])
+    }
+
     func loadLevel(from tiles: [[Character]]) -> LevelData {
         var playerStart = CGPoint(x: 100, y: 100)
         var flagpolePos = CGPoint.zero
@@ -55,7 +64,12 @@ class LevelLoader {
 
                 switch char {
                 case "#", "G":
-                    let block = BlockNode(type: .ground)
+                    let blockType: BlockType = isTopGroundTile(
+                        rowIndex: rowIndex,
+                        colIndex: colIndex,
+                        tiles: tiles
+                    ) ? .groundTop : .ground
+                    let block = BlockNode(type: blockType)
                     block.position = position
                     parentNode.addChild(block)
                     blocks.append(block)

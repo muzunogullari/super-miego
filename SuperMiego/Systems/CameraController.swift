@@ -39,9 +39,20 @@ class CameraController {
         let maxX = max(minX, levelBounds.width - viewportSize.width / 2)
         newX = max(minX, min(maxX, newX))
 
-        // Camera Y follows player directly - center on player
-        let targetY = player.position.y
-        let smoothingY: CGFloat = 0.2  // Fast Y tracking
+        // Camera Y uses a vertical tracking band instead of centering on every jump.
+        // This keeps the ground in frame longer and avoids exposing the lower matte
+        // unless the player actually climbs high enough to justify a camera move.
+        let upperTrackingOffset = viewportSize.height * 0.12
+        let lowerTrackingOffset = viewportSize.height * 0.18
+        var targetY = camera.position.y
+
+        if player.position.y > camera.position.y + upperTrackingOffset {
+            targetY = player.position.y - upperTrackingOffset
+        } else if player.position.y < camera.position.y - lowerTrackingOffset {
+            targetY = player.position.y + lowerTrackingOffset
+        }
+
+        let smoothingY: CGFloat = 0.14
         var newY = camera.position.y + (targetY - camera.position.y) * smoothingY
 
         // Clamp Y so the viewport bottom never goes below ground level (y=0)

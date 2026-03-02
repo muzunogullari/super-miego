@@ -77,6 +77,8 @@ struct AssetNames {
         static let farMountains = "bg_far_mountains"
         static let nearTrees = "bg_near_trees"
         static let mist = "bg_mist"
+        static let valleyStrip = "bg_valley_strip"
+        static let meadowStrip = "bg_meadow_strip"
     }
 
     // MARK: - UI

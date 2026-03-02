@@ -2,6 +2,7 @@ import SpriteKit
 
 enum BlockType {
     case ground
+    case groundTop
     case brick
     case question
     case empty
@@ -51,7 +52,15 @@ class BlockNode: SKSpriteNode {
 
         switch type {
         case .ground:
-            color = SKColor(red: 0.45, green: 0.3, blue: 0.2, alpha: 1.0)
+            let groundTex = SKTexture(imageNamed: AssetNames.Block.ground)
+            groundTex.filteringMode = .nearest
+            tex = groundTex
+            color = .clear
+        case .groundTop:
+            let groundTex = SKTexture(imageNamed: AssetNames.Block.groundTop)
+            groundTex.filteringMode = .nearest
+            tex = groundTex
+            color = .clear
         case .brick:
             let brickTex = SKTexture(imageNamed: "brick_crate")
             brickTex.filteringMode = .nearest
@@ -128,7 +137,12 @@ class BlockNode: SKSpriteNode {
             body.categoryBitMask = PhysicsCategory.platform
         default:
             body = SKPhysicsBody(rectangleOf: size)
-            body.categoryBitMask = blockType == .ground ? PhysicsCategory.ground : PhysicsCategory.block
+            switch blockType {
+            case .ground, .groundTop:
+                body.categoryBitMask = PhysicsCategory.ground
+            default:
+                body.categoryBitMask = PhysicsCategory.block
+            }
         }
 
         body.collisionBitMask = PhysicsCategory.player | PhysicsCategory.enemy | PhysicsCategory.item
